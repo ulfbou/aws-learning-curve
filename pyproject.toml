@@ -1,0 +1,9 @@
+[project]
+name = "aws-learning-curve-content"
+version = "0.1.0"
+description = "File-based learning content - Python tooling"
+requires-python = ">=3.11"
+dependencies = ["pyyaml>=6.0","jsonschema>=4.21","referencing>=0.32"]
+[project.scripts]
+validate-content = "scripts.validate_content:main"
+build-bundle = "scripts.build_learning_bundle:main"

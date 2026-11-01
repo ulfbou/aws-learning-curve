@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ulfbou.github.io/aws-learning-curve/schemas/concept.schema.json",
+  "title": "Concept",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "kind",
+    "status",
+    "domain",
+    "labels",
+    "definition",
+    "revision",
+    "created_at",
+    "updated_at",
+    "content_hash",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "kind": {
+      "const": "concept"
+    },
+    "concept_type": {
+      "type": "string",
+      "enum": [
+        "entity",
+        "process",
+        "principle",
+        "contrast",
+        "mechanism",
+        "decision_criteria",
+        "model"
+      ],
+      "default": "entity"
+    },
+    "status": {
+      "$ref": "common.schema.json#/$defs/status"
+    },
+    "domain": {
+      "$ref": "common.schema.json#/$defs/domain"
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "definition": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "explanations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "key_points": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "examples": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "non_examples": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "target_id"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "related_to",
+              "depends_on",
+              "contrasted_with",
+              "enables",
+              "illustrated_by"
+            ]
+          },
+          "target_id": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        }
+      }
+    },
+    "members": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "Required for contrast concepts - exactly two members with matching dimension keys. ADR refinement.",
+      "items": {
+        "type": "object",
+        "required": [
+          "concept_id",
+          "dimensions"
+        ],
+        "properties": {
+          "concept_id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "dimensions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "confusion_signals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "misconception_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      }
+    },
+    "recommended_question_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      }
+    },
+    "tags": {
+      "$ref": "common.schema.json#/$defs/tags"
+    },
+    "provenance": {
+      "$ref": "common.schema.json#/$defs/provenance"
+    },
+    "grounding": {
+      "$ref": "common.schema.json#/$defs/grounding"
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/revision"
+    },
+    "created_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "updated_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "content_hash": {
+      "$ref": "common.schema.json#/$defs/contentHash"
+    },
+    "aliases": {
+      "$ref": "common.schema.json#/$defs/aliases"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "concept_type": {
+            "const": "contrast"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "members"
+        ],
+        "properties": {
+          "members": {
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

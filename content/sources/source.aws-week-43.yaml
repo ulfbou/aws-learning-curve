@@ -1,0 +1,40 @@
+schema_version: '1.0'
+id: source.aws-week-43
+kind: source
+status: published
+title: Veckans AWS-anteckningar
+source_type: course_notes
+language: sv-SE
+origin:
+  path: content/raw/Veckans-AWS-anteckningar.md
+  external_url: null
+  captured_at: '2026-11-01T00:00:00+01:00'
+  content_hash: a6e5d15bf571ca7a23fd704caad6c4c071210ba8d38ea0296dc58c3ce0a0e514
+covered_period:
+  from: '2026-10-19'
+  to: '2026-10-23'
+fragments:
+- id: source.aws-week-43.lambda.trigger-role
+  heading: Trigger och execution role är olika saker
+  language: sv-SE
+  content_fingerprint: f66c3e95dc742913143f4d4f19726563
+  locator:
+    section: '2026-10-23'
+    page: 4
+  exact_text: 'Triggern svarar på vad som får funktionen att köras.
+
+    Execution role svarar på vad funktionen får göra när den körs.
+
+    '
+  normalized_text: 'En trigger initierar Lambda-funktionen. En execution role bestämmer
+    vilka AWS-åtgärder funktionen får utföra.
+
+    '
+  noise_removed:
+  - page_marker
+  - timestamp
+revision: 1
+created_at: '2026-11-01T10:00:00+01:00'
+updated_at: '2026-11-01T10:00:00+01:00'
+content_hash: c2be438fc908a1a846138fc3309e65e6a8877632b9112a6bcd89764fab97c8de
+aliases: []

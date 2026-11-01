@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ulfbou.github.io/aws-learning-curve/schemas/common.schema.json",
+  "title": "Common definitions",
+  "type": "object",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+){1,10}$",
+      "maxLength": 128,
+      "description": "Stable semantic ID. ADR-003"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optimistic concurrency. ADR-008"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "bcp47": {
+      "type": "string",
+      "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]+)*$",
+      "examples": [
+        "sv-SE",
+        "en"
+      ]
+    },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256 hex"
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{16,64}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "candidate",
+        "published",
+        "deprecated",
+        "rejected"
+      ]
+    },
+    "domain": {
+      "type": "string",
+      "enum": [
+        "aws-cloud",
+        "artificial-intelligence"
+      ]
+    },
+    "provenanceRelation": {
+      "type": "string",
+      "enum": [
+        "directly_supports",
+        "partially_supports",
+        "illustrates",
+        "qualifies",
+        "contradicts",
+        "derived_from"
+      ]
+    },
+    "fidelity": {
+      "type": "string",
+      "enum": [
+        "quotation",
+        "close_paraphrase",
+        "paraphrase",
+        "inference",
+        "generated"
+      ]
+    },
+    "provenanceSource": {
+      "type": "object",
+      "required": [
+        "source_id",
+        "fragment_id",
+        "relation"
+      ],
+      "properties": {
+        "source_id": {
+          "$ref": "#/$defs/id"
+        },
+        "fragment_id": {
+          "$ref": "#/$defs/id"
+        },
+        "relation": {
+          "$ref": "#/$defs/provenanceRelation"
+        }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "sources",
+        "transformation",
+        "verification"
+      ],
+      "properties": {
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/provenanceSource"
+          }
+        },
+        "transformation": {
+          "type": "object",
+          "required": [
+            "method",
+            "run_id",
+            "fidelity"
+          ],
+          "properties": {
+            "method": {
+              "type": "string",
+              "enum": [
+                "llm_extraction",
+                "llm_generation",
+                "llm_inference",
+                "human_authored",
+                "deterministic"
+              ]
+            },
+            "run_id": {
+              "type": "string"
+            },
+            "fidelity": {
+              "$ref": "#/$defs/fidelity"
+            }
+          },
+          "additionalProperties": false
+        },
+        "verification": {
+          "type": "object",
+          "required": [
+            "source_grounded",
+            "externally_verified"
+          ],
+          "properties": {
+            "source_grounded": {
+              "type": "boolean"
+            },
+            "externally_verified": {
+              "type": "boolean"
+            },
+            "verified_at": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            }
+          },
+          "additionalProperties": false
+        },
+        "unsupported_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "grounding": {
+      "type": "object",
+      "required": [
+        "source_ids",
+        "fragment_ids"
+      ],
+      "properties": {
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "fragment_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "concept_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "unsupported_claims": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "default": []
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "default": []
+    }
+  }
+}

@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ulfbou.github.io/aws-learning-curve/schemas/competency.schema.json",
+  "title": "Competency",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "kind",
+    "status",
+    "domain",
+    "title",
+    "description",
+    "level",
+    "revision",
+    "created_at",
+    "updated_at",
+    "content_hash"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "kind": {
+      "const": "competency"
+    },
+    "status": {
+      "$ref": "common.schema.json#/$defs/status"
+    },
+    "domain": {
+      "$ref": "common.schema.json#/$defs/domain"
+    },
+    "title": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "description": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "foundation",
+        "intermediate",
+        "advanced"
+      ]
+    },
+    "bloom_level": {
+      "type": "string",
+      "enum": [
+        "remember",
+        "understand",
+        "apply",
+        "analyze",
+        "evaluate",
+        "create"
+      ],
+      "description": "Refinement"
+    },
+    "prerequisite_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      }
+    },
+    "concept_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      }
+    },
+    "success_criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "description",
+          "required",
+          "weight"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "mastery_policy": {
+      "type": "object",
+      "properties": {
+        "minimum_score": {
+          "type": "number"
+        },
+        "minimum_successful_attempts": {
+          "type": "integer"
+        },
+        "minimum_distinct_question_types": {
+          "type": "integer"
+        },
+        "minimum_distinct_contexts": {
+          "type": "integer"
+        },
+        "delayed_retrieval_required": {
+          "type": "boolean"
+        },
+        "transfer_required": {
+          "type": "boolean"
+        },
+        "self_report_sufficient": {
+          "type": "boolean"
+        }
+      }
+    },
+    "decay_policy": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "enum": [
+            "fsrs",
+            "sm2",
+            "none"
+          ]
+        },
+        "parameters": {
+          "type": "object"
+        }
+      },
+      "description": "FSRS params belong to private study state per refinement, but policy pointer stays here"
+    },
+    "recommended_content": {
+      "type": "object"
+    },
+    "tags": {
+      "$ref": "common.schema.json#/$defs/tags"
+    },
+    "provenance": {
+      "$ref": "common.schema.json#/$defs/provenance"
+    },
+    "grounding": {
+      "$ref": "common.schema.json#/$defs/grounding"
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/revision"
+    },
+    "created_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "updated_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "content_hash": {
+      "$ref": "common.schema.json#/$defs/contentHash"
+    },
+    "aliases": {
+      "$ref": "common.schema.json#/$defs/aliases"
+    }
+  },
+  "additionalProperties": false
+}

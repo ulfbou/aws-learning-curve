@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ulfbou.github.io/aws-learning-curve/schemas/study-state.schema.json",
+  "title": "StudyState - private",
+  "type": "object",
+  "description": "ADR-009 private-state exclusion - never in public/data",
+  "required": [
+    "schema_version",
+    "learner_id",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "learner_id": {
+      "type": "string"
+    },
+    "updated_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "preferences": {
+      "type": "object"
+    },
+    "fsrs_parameters": {
+      "type": "object",
+      "description": "FSRS params belong to private study state per refinement",
+      "properties": {
+        "model": {
+          "const": "fsrs"
+        },
+        "w": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "desired_retention": {
+          "type": "number"
+        }
+      }
+    },
+    "competencies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "misconceptions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "attempts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "additionalProperties": false
+}

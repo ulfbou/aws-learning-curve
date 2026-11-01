@@ -1,0 +1,348 @@
+{
+  "schemaVersion": "1.0",
+  "contentVersion": "2026-11-01.1",
+  "generatedAt": "2026-11-01T14:06:51.457288+00:00",
+  "aliasMap": {},
+  "concepts": {
+    "aws.lambda.execution-role": {
+      "schema_version": "1.0",
+      "id": "aws.lambda.execution-role",
+      "kind": "concept",
+      "concept_type": "entity",
+      "status": "published",
+      "domain": "aws-cloud",
+      "labels": {
+        "sv-SE": {
+          "preferred": "Lambda execution role",
+          "alternatives": [
+            "exekveringsroll"
+          ]
+        },
+        "en": {
+          "preferred": "Lambda execution role"
+        }
+      },
+      "definition": {
+        "sv-SE": "Den IAM-roll vars behörigheter bestämmer vilka AWS-åtgärder en Lambda-funktion får utföra under körningen.",
+        "en": "The IAM role whose permissions determine which AWS actions a Lambda function may perform during execution."
+      },
+      "explanations": [
+        {
+          "id": "aws.lambda.execution-role.explanation.foundation",
+          "level": "foundation",
+          "language": "sv-SE",
+          "text": "Triggern får funktionen att starta. Execution role ger funktionen behörighet att exempelvis skriva loggar eller läsa från S3."
+        }
+      ],
+      "key_points": [
+        "En execution role initierar inte funktionen.",
+        "Rollen används under funktionens körning.",
+        "Rollen ska följa least privilege."
+      ],
+      "examples": [
+        {
+          "function": "Bearbeta en uppladdad fil",
+          "required_permissions": [
+            "logs:CreateLogStream",
+            "logs:PutLogEvents",
+            "s3:GetObject"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "type": "contrasted_with",
+          "target_id": "aws.lambda.trigger"
+        }
+      ],
+      "tags": [
+        "aws",
+        "lambda",
+        "iam",
+        "security",
+        "serverless"
+      ],
+      "provenance": {
+        "sources": [
+          {
+            "source_id": "source.aws-week-43",
+            "fragment_id": "source.aws-week-43.lambda.trigger-role",
+            "relation": "directly_supports"
+          }
+        ],
+        "transformation": {
+          "method": "llm_extraction",
+          "run_id": "generation.2026-11-01.001",
+          "fidelity": "paraphrase"
+        },
+        "verification": {
+          "source_grounded": true,
+          "externally_verified": false,
+          "verified_at": null
+        },
+        "unsupported_fields": []
+      },
+      "grounding": {
+        "source_ids": [
+          "source.aws-week-43"
+        ],
+        "fragment_ids": [
+          "source.aws-week-43.lambda.trigger-role"
+        ],
+        "concept_ids": [
+          "aws.lambda.trigger",
+          "aws.lambda.execution-role"
+        ],
+        "unsupported_claims": []
+      },
+      "revision": 1,
+      "created_at": "2026-11-01T11:00:00+01:00",
+      "updated_at": "2026-11-01T11:00:00+01:00",
+      "content_hash": "04c7a14a0828c8ec882aae911ba59e22423b78d3f5e411e8377e6d734629664c",
+      "aliases": []
+    },
+    "aws.lambda.trigger-vs-execution-role": {
+      "schema_version": "1.0",
+      "id": "aws.lambda.trigger-vs-execution-role",
+      "kind": "concept",
+      "concept_type": "contrast",
+      "status": "published",
+      "domain": "aws-cloud",
+      "labels": {
+        "sv-SE": {
+          "preferred": "Trigger jämfört med execution role"
+        }
+      },
+      "definition": {
+        "sv-SE": "Kontrast mellan det som startar en Lambda och det som ger den behörigheter."
+      },
+      "members": [
+        {
+          "concept_id": "aws.lambda.trigger",
+          "dimensions": {
+            "purpose": "Startar eller anropar funktionen",
+            "question_answered": "Vad får funktionen att köras?",
+            "phase": "Före eller vid invocation"
+          }
+        },
+        {
+          "concept_id": "aws.lambda.execution-role",
+          "dimensions": {
+            "purpose": "Ger funktionen AWS-behörigheter",
+            "question_answered": "Vad får funktionen göra under körningen?",
+            "phase": "Under execution"
+          }
+        }
+      ],
+      "confusion_signals": [
+        "Studenten beskriver triggern som en behörighet.",
+        "Studenten beskriver execution role som en eventkälla."
+      ],
+      "misconception_ids": [],
+      "recommended_question_ids": [],
+      "tags": [
+        "aws",
+        "lambda",
+        "distinction"
+      ],
+      "provenance": {
+        "sources": [
+          {
+            "source_id": "source.aws-week-43",
+            "fragment_id": "source.aws-week-43.lambda.trigger-role",
+            "relation": "directly_supports"
+          }
+        ],
+        "transformation": {
+          "method": "llm_extraction",
+          "run_id": "generation.2026-11-01.001",
+          "fidelity": "inference"
+        },
+        "verification": {
+          "source_grounded": true,
+          "externally_verified": false,
+          "verified_at": null
+        },
+        "unsupported_fields": []
+      },
+      "grounding": {
+        "source_ids": [
+          "source.aws-week-43"
+        ],
+        "fragment_ids": [
+          "source.aws-week-43.lambda.trigger-role"
+        ],
+        "concept_ids": [
+          "aws.lambda.trigger",
+          "aws.lambda.execution-role"
+        ],
+        "unsupported_claims": []
+      },
+      "revision": 1,
+      "created_at": "2026-11-01T11:00:00+01:00",
+      "updated_at": "2026-11-01T11:00:00+01:00",
+      "content_hash": "f4ae723c4efb43c2b25ce7fd77c024fa0389f5c3fbed456798544a2c59a5a711",
+      "aliases": []
+    },
+    "aws.lambda.trigger": {
+      "schema_version": "1.0",
+      "id": "aws.lambda.trigger",
+      "kind": "concept",
+      "concept_type": "entity",
+      "status": "published",
+      "domain": "aws-cloud",
+      "labels": {
+        "sv-SE": {
+          "preferred": "Lambda trigger"
+        }
+      },
+      "definition": {
+        "sv-SE": "En händelsekälla som initierar en Lambda-funktion.",
+        "en": "An event source that initiates a Lambda function."
+      },
+      "key_points": [
+        "Besvarar vad som får funktionen att köras.",
+        "Är inte en behörighet."
+      ],
+      "tags": [
+        "aws",
+        "lambda"
+      ],
+      "provenance": {
+        "sources": [
+          {
+            "source_id": "source.aws-week-43",
+            "fragment_id": "source.aws-week-43.lambda.trigger-role",
+            "relation": "directly_supports"
+          }
+        ],
+        "transformation": {
+          "method": "llm_extraction",
+          "run_id": "generation.2026-11-01.001",
+          "fidelity": "paraphrase"
+        },
+        "verification": {
+          "source_grounded": true,
+          "externally_verified": false,
+          "verified_at": null
+        },
+        "unsupported_fields": []
+      },
+      "grounding": {
+        "source_ids": [
+          "source.aws-week-43"
+        ],
+        "fragment_ids": [
+          "source.aws-week-43.lambda.trigger-role"
+        ],
+        "unsupported_claims": []
+      },
+      "revision": 1,
+      "created_at": "2026-11-01T11:00:00+01:00",
+      "updated_at": "2026-11-01T11:00:00+01:00",
+      "content_hash": "a8700e298fd10f2a559736d2343b5af5dadd7c2cc40338740ebefd2a9d1ceed3",
+      "aliases": []
+    }
+  },
+  "competencies": {},
+  "learningUnits": {},
+  "questions": {},
+  "scenarios": {},
+  "procedures": {},
+  "misconceptions": {},
+  "sources": {
+    "source.aws-week-43": {
+      "schema_version": "1.0",
+      "id": "source.aws-week-43",
+      "kind": "source",
+      "status": "published",
+      "title": "Veckans AWS-anteckningar",
+      "source_type": "course_notes",
+      "language": "sv-SE",
+      "origin": {
+        "path": "content/raw/Veckans-AWS-anteckningar.md",
+        "external_url": null,
+        "captured_at": "2026-11-01T00:00:00+01:00",
+        "content_hash": "a6e5d15bf571ca7a23fd704caad6c4c071210ba8d38ea0296dc58c3ce0a0e514"
+      },
+      "covered_period": {
+        "from": "2026-10-19",
+        "to": "2026-10-23"
+      },
+      "fragments": [
+        {
+          "id": "source.aws-week-43.lambda.trigger-role",
+          "heading": "Trigger och execution role är olika saker",
+          "language": "sv-SE",
+          "content_fingerprint": "f66c3e95dc742913143f4d4f19726563",
+          "locator": {
+            "section": "2026-10-23",
+            "page": 4
+          },
+          "exact_text": "Triggern svarar på vad som får funktionen att köras.\nExecution role svarar på vad funktionen får göra när den körs.\n",
+          "normalized_text": "En trigger initierar Lambda-funktionen. En execution role bestämmer vilka AWS-åtgärder funktionen får utföra.\n",
+          "noise_removed": [
+            "page_marker",
+            "timestamp"
+          ]
+        }
+      ],
+      "revision": 1,
+      "created_at": "2026-11-01T10:00:00+01:00",
+      "updated_at": "2026-11-01T10:00:00+01:00",
+      "content_hash": "c2be438fc908a1a846138fc3309e65e6a8877632b9112a6bcd89764fab97c8de",
+      "aliases": []
+    }
+  },
+  "indexes": {
+    "byTag": {
+      "aws": [
+        "aws.lambda.execution-role",
+        "aws.lambda.trigger-vs-execution-role",
+        "aws.lambda.trigger"
+      ],
+      "lambda": [
+        "aws.lambda.execution-role",
+        "aws.lambda.trigger-vs-execution-role",
+        "aws.lambda.trigger"
+      ],
+      "iam": [
+        "aws.lambda.execution-role"
+      ],
+      "security": [
+        "aws.lambda.execution-role"
+      ],
+      "serverless": [
+        "aws.lambda.execution-role"
+      ],
+      "distinction": [
+        "aws.lambda.trigger-vs-execution-role"
+      ]
+    },
+    "byCompetency": {},
+    "byConcept": {},
+    "byDifficulty": {},
+    "byMisconception": {},
+    "prerequisites": {},
+    "contrasts": [
+      "aws.lambda.trigger-vs-execution-role"
+    ]
+  },
+  "manifest": {
+    "contentVersion": "2026-11-01.1",
+    "generatedAt": "2026-11-01T14:06:51.457288+00:00",
+    "counts": {
+      "concepts": 3,
+      "competencies": 0,
+      "learningUnits": 0,
+      "questions": 0,
+      "scenarios": 0,
+      "procedures": 0,
+      "misconceptions": 0,
+      "sources": 1
+    },
+    "publishedOnly": true,
+    "privateExcluded": true,
+    "rawExcluded": true
+  }
+}

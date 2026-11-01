@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ulfbou.github.io/aws-learning-curve/schemas/learning-unit.schema.json",
+  "title": "Learning Unit",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "kind",
+    "status",
+    "domain",
+    "title",
+    "revision",
+    "created_at",
+    "updated_at",
+    "content_hash"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "kind": {
+      "const": "learning_unit"
+    },
+    "status": {
+      "$ref": "common.schema.json#/$defs/status"
+    },
+    "domain": {
+      "$ref": "common.schema.json#/$defs/domain"
+    },
+    "title": {
+      "type": "object"
+    },
+    "summary": {
+      "type": "object"
+    },
+    "estimated_minutes": {
+      "type": "integer"
+    },
+    "difficulty": {
+      "type": "string"
+    },
+    "learning_objectives": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      }
+    },
+    "prerequisite_competencies": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      }
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "completion": {
+      "type": "object"
+    },
+    "next_unit_rules": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/revision"
+    },
+    "created_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "updated_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "content_hash": {
+      "$ref": "common.schema.json#/$defs/contentHash"
+    },
+    "aliases": {
+      "$ref": "common.schema.json#/$defs/aliases"
+    },
+    "provenance": {
+      "$ref": "common.schema.json#/$defs/provenance"
+    },
+    "grounding": {
+      "$ref": "common.schema.json#/$defs/grounding"
+    }
+  },
+  "additionalProperties": false
+}

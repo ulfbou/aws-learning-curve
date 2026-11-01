@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ulfbou.github.io/aws-learning-curve/schemas/generation-run.schema.json",
+  "title": "GenerationRun",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "kind",
+    "created_at",
+    "generator",
+    "operation",
+    "inputs",
+    "outputs"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "kind": {
+      "const": "generation_run"
+    },
+    "created_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "generator": {
+      "type": "object",
+      "required": [
+        "type",
+        "model",
+        "prompt_version"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "prompt_version": {
+          "type": "string"
+        },
+        "prompt_hash": {
+          "type": "string"
+        }
+      }
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "incremental_extract",
+        "external_verify",
+        "remediation"
+      ]
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "existing_context": {
+      "type": "object"
+    },
+    "outputs": {
+      "type": "object",
+      "required": [
+        "created",
+        "updated",
+        "unchanged"
+      ],
+      "properties": {
+        "created": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "updated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unchanged": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "quality": {
+      "type": "object"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

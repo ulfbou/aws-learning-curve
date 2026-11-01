@@ -1,0 +1,71 @@
+schema_version: '1.0'
+id: aws.lambda.execution-role
+kind: concept
+concept_type: entity
+status: published
+domain: aws-cloud
+labels:
+  sv-SE:
+    preferred: Lambda execution role
+    alternatives:
+    - exekveringsroll
+  en:
+    preferred: Lambda execution role
+definition:
+  sv-SE: Den IAM-roll vars behörigheter bestämmer vilka AWS-åtgärder en Lambda-funktion
+    får utföra under körningen.
+  en: The IAM role whose permissions determine which AWS actions a Lambda function
+    may perform during execution.
+explanations:
+- id: aws.lambda.execution-role.explanation.foundation
+  level: foundation
+  language: sv-SE
+  text: Triggern får funktionen att starta. Execution role ger funktionen behörighet
+    att exempelvis skriva loggar eller läsa från S3.
+key_points:
+- En execution role initierar inte funktionen.
+- Rollen används under funktionens körning.
+- Rollen ska följa least privilege.
+examples:
+- function: Bearbeta en uppladdad fil
+  required_permissions:
+  - logs:CreateLogStream
+  - logs:PutLogEvents
+  - s3:GetObject
+relationships:
+- type: contrasted_with
+  target_id: aws.lambda.trigger
+tags:
+- aws
+- lambda
+- iam
+- security
+- serverless
+provenance:
+  sources:
+  - source_id: source.aws-week-43
+    fragment_id: source.aws-week-43.lambda.trigger-role
+    relation: directly_supports
+  transformation:
+    method: llm_extraction
+    run_id: generation.2026-11-01.001
+    fidelity: paraphrase
+  verification:
+    source_grounded: true
+    externally_verified: false
+    verified_at: null
+  unsupported_fields: []
+grounding:
+  source_ids:
+  - source.aws-week-43
+  fragment_ids:
+  - source.aws-week-43.lambda.trigger-role
+  concept_ids:
+  - aws.lambda.trigger
+  - aws.lambda.execution-role
+  unsupported_claims: []
+revision: 1
+created_at: '2026-11-01T11:00:00+01:00'
+updated_at: '2026-11-01T11:00:00+01:00'
+content_hash: 04c7a14a0828c8ec882aae911ba59e22423b78d3f5e411e8377e6d734629664c
+aliases: []

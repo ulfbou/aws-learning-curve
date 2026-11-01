@@ -1,0 +1,44 @@
+schema_version: "1.0"
+content_version: "2026-11-01.1"
+default_language: sv-SE
+generated_at: "2026-11-01T13:34:00+01:00"
+
+collections:
+  sources: sources/
+  concepts: concepts/
+  competencies: competencies/
+  learning_units: learning-units/
+  questions: questions/
+  scenarios: scenarios/
+  procedures: procedures/
+  misconceptions: misconceptions/
+  generation_runs: generation-runs/
+
+published_bundle:
+  path: public/data/learning-bundle.json
+  manifest_path: public/data/learning-bundle.manifest.json
+
+domains:
+  - id: aws-cloud
+    title: AWS Cloud
+  - id: artificial-intelligence
+    title: Artificial Intelligence
+
+aliases: {}
+
+indexes:
+  required:
+    - byTag
+    - byCompetency
+    - byConcept
+    - byDifficulty
+    - byMisconception
+    - prerequisites
+    - contrasts
+
+release:
+  allow_candidate_in_bundle: false
+  require_source_grounding_for_factual: true
+  private_paths_excluded:
+    - private/
+    - content/raw/

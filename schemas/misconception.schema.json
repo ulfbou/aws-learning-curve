@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ulfbou.github.io/aws-learning-curve/schemas/misconception.schema.json",
+  "title": "Misconception",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "kind",
+    "status",
+    "domain",
+    "statement",
+    "correction",
+    "severity",
+    "revision",
+    "created_at",
+    "updated_at",
+    "content_hash"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "kind": {
+      "const": "misconception"
+    },
+    "status": {
+      "$ref": "common.schema.json#/$defs/status"
+    },
+    "domain": {
+      "$ref": "common.schema.json#/$defs/domain"
+    },
+    "statement": {
+      "type": "object"
+    },
+    "correction": {
+      "type": "object"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "foundational",
+        "common",
+        "subtle"
+      ]
+    },
+    "concept_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      }
+    },
+    "diagnostic_signals": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "remediation": {
+      "type": "object"
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/revision"
+    },
+    "created_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "updated_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "content_hash": {
+      "$ref": "common.schema.json#/$defs/contentHash"
+    },
+    "aliases": {
+      "$ref": "common.schema.json#/$defs/aliases"
+    },
+    "provenance": {
+      "$ref": "common.schema.json#/$defs/provenance"
+    },
+    "grounding": {
+      "$ref": "common.schema.json#/$defs/grounding"
+    }
+  },
+  "additionalProperties": false
+}

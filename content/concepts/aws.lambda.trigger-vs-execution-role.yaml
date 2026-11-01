@@ -1,0 +1,59 @@
+schema_version: '1.0'
+id: aws.lambda.trigger-vs-execution-role
+kind: concept
+concept_type: contrast
+status: published
+domain: aws-cloud
+labels:
+  sv-SE:
+    preferred: Trigger jämfört med execution role
+definition:
+  sv-SE: Kontrast mellan det som startar en Lambda och det som ger den behörigheter.
+members:
+- concept_id: aws.lambda.trigger
+  dimensions:
+    purpose: Startar eller anropar funktionen
+    question_answered: Vad får funktionen att köras?
+    phase: Före eller vid invocation
+- concept_id: aws.lambda.execution-role
+  dimensions:
+    purpose: Ger funktionen AWS-behörigheter
+    question_answered: Vad får funktionen göra under körningen?
+    phase: Under execution
+confusion_signals:
+- Studenten beskriver triggern som en behörighet.
+- Studenten beskriver execution role som en eventkälla.
+misconception_ids: []
+recommended_question_ids: []
+tags:
+- aws
+- lambda
+- distinction
+provenance:
+  sources:
+  - source_id: source.aws-week-43
+    fragment_id: source.aws-week-43.lambda.trigger-role
+    relation: directly_supports
+  transformation:
+    method: llm_extraction
+    run_id: generation.2026-11-01.001
+    fidelity: inference
+  verification:
+    source_grounded: true
+    externally_verified: false
+    verified_at: null
+  unsupported_fields: []
+grounding:
+  source_ids:
+  - source.aws-week-43
+  fragment_ids:
+  - source.aws-week-43.lambda.trigger-role
+  concept_ids:
+  - aws.lambda.trigger
+  - aws.lambda.execution-role
+  unsupported_claims: []
+revision: 1
+created_at: '2026-11-01T11:00:00+01:00'
+updated_at: '2026-11-01T11:00:00+01:00'
+content_hash: f4ae723c4efb43c2b25ce7fd77c024fa0389f5c3fbed456798544a2c59a5a711
+aliases: []

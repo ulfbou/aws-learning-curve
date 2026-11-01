@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0",
+  "contentVersion": "2026-11-01.1",
+  "generatedAt": "2026-11-01T14:06:51.457288+00:00",
+  "bundlePath": "public/data/learning-bundle.json",
+  "bundleHash": "5b0629a274384f6c2969395f0da0a5f6a5858be3abb7f4db951b62f9cd510d40",
+  "bundleSizeBytes": 10584,
+  "perObjectHashes": {
+    "source.aws-week-43": "c2be438fc908a1a846138fc3309e65e6a8877632b9112a6bcd89764fab97c8de",
+    "aws.lambda.execution-role": "04c7a14a0828c8ec882aae911ba59e22423b78d3f5e411e8377e6d734629664c",
+    "aws.lambda.trigger-vs-execution-role": "f4ae723c4efb43c2b25ce7fd77c024fa0389f5c3fbed456798544a2c59a5a711",
+    "aws.lambda.trigger": "a8700e298fd10f2a559736d2343b5af5dadd7c2cc40338740ebefd2a9d1ceed3"
+  },
+  "aliasMap": {},
+  "releaseInvariants": [
+    "No private file may enter public/data",
+    "No raw source may enter bundle",
+    "No published object may reference a candidate",
+    "No factual object may lack grounding",
+    "No object with unsupported claims may be published",
+    "All refs resolve after alias expansion",
+    "Bundle and manifest hashes must match"
+  ]
+}

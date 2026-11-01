@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ulfbou.github.io/aws-learning-curve/schemas/source.schema.json",
+  "title": "Source",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "kind",
+    "status",
+    "title",
+    "source_type",
+    "language",
+    "origin",
+    "revision",
+    "created_at",
+    "updated_at",
+    "content_hash"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "kind": {
+      "const": "source"
+    },
+    "status": {
+      "$ref": "common.schema.json#/$defs/status"
+    },
+    "title": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "course_notes",
+        "aws_docs",
+        "book",
+        "video",
+        "own_notes"
+      ]
+    },
+    "language": {
+      "$ref": "common.schema.json#/$defs/bcp47"
+    },
+    "origin": {
+      "type": "object",
+      "required": [
+        "path",
+        "captured_at",
+        "content_hash"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "external_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "captured_at": {
+          "$ref": "common.schema.json#/$defs/timestamp"
+        },
+        "content_hash": {
+          "$ref": "common.schema.json#/$defs/contentHash"
+        }
+      }
+    },
+    "covered_period": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "from": {
+          "type": "string",
+          "format": "date"
+        },
+        "to": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "fragments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "language",
+          "content_fingerprint",
+          "exact_text",
+          "normalized_text"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "heading": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "language": {
+            "$ref": "common.schema.json#/$defs/bcp47"
+          },
+          "content_fingerprint": {
+            "$ref": "common.schema.json#/$defs/fingerprint"
+          },
+          "locator": {
+            "type": "object",
+            "properties": {
+              "section": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "page": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "start_offset": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "end_offset": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            }
+          },
+          "exact_text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "normalized_text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "noise_removed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "revision": {
+      "$ref": "common.schema.json#/$defs/revision"
+    },
+    "created_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "updated_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "content_hash": {
+      "$ref": "common.schema.json#/$defs/contentHash"
+    },
+    "aliases": {
+      "$ref": "common.schema.json#/$defs/aliases"
+    }
+  },
+  "additionalProperties": false
+}
