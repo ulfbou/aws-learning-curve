@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 64 64"
+  role="img"
+  aria-label="AWS Learning Curve"
+>
   <rect width="64" height="64" rx="12" fill="#232f3e"/>
-  <text
-    x="32"
-    y="42"
+  <path
+    d="M15 43 27 16h10l12 27h-9l-2-6H26l-2 6Zm14-13h6l-3-9Z"
     fill="#ff9900"
-    font-family="Arial, sans-serif"
-    font-size="28"
-    font-weight="700"
-    text-anchor="middle"
-  >UB</text>
+  />
 </svg>
