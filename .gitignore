@@ -15,6 +15,10 @@ public/data/
 # Local DX carriers and diffs
 .dx/
 
+# Private and transient authoring inputs
+.private/
+.authoring/
+
 # Editor and OS files
 .vs/
 .vscode/
