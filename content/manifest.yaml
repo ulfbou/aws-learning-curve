@@ -1,0 +1,20 @@
+schema_version: '1.0'
+content_version: 2099-01-01.1
+default_language: en-US
+generated_at: '2026-11-02T10:00:00Z'
+collections:
+  sources: content/sources/**/*.yaml
+  concepts: content/concepts/**/*.yaml
+  competencies: content/competencies/**/*.yaml
+  learning_units: content/learning-units/**/*.yaml
+  questions: content/questions/**/*.yaml
+  scenarios: content/scenarios/**/*.yaml
+  procedures: content/procedures/**/*.yaml
+  misconceptions: content/misconceptions/**/*.yaml
+published_bundle:
+  path: public/data/learning-bundle.json
+  manifest_path: public/data/learning-bundle.manifest.json
+domains:
+- id: aws-security
+  title: AWS Security
+aliases: {}

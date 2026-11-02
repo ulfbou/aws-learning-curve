@@ -1,0 +1,52 @@
+schema_version: '1.0'
+id: source.test.dummy-authoring
+kind: source
+status: candidate
+title: Dummy authoring source
+source_type: own_notes
+language: en-US
+origin:
+  path: F:/dev/aws-learning-curve/.private/sources/dummy-authoring-source.md
+  external_url: null
+  captured_at: '2026-11-02T10:00:00Z'
+  content_hash: d47eccc9ee382c200d403f0bac68e7da2d6a5df56852c8ea49552d7f9dc18dce
+fragments:
+- id: source.test.dummy-authoring.fragment.001
+  language: en-US
+  content_fingerprint: 90716a5a7662797f5bec825ee1ed3433
+  locator:
+    start_offset: 0
+    end_offset: 24
+  exact_text: '# Dummy authoring source'
+  normalized_text: '# Dummy authoring source'
+  noise_removed: []
+- id: source.test.dummy-authoring.fragment.002
+  language: en-US
+  content_fingerprint: a72d2c829bd0cde85f42065968fc448f
+  locator:
+    start_offset: 26
+    end_offset: 109
+  exact_text: An IAM policy defines permissions. An explicit deny takes precedence
+    over an allow.
+  normalized_text: An IAM policy defines permissions. An explicit deny takes precedence
+    over an allow.
+  noise_removed: []
+- id: source.test.dummy-authoring.fragment.003
+  language: en-US
+  content_fingerprint: f1aef0145ae52d051a04bbee48cc1ea8
+  locator:
+    start_offset: 111
+    end_offset: 225
+  exact_text: 'A role can be assumed to obtain temporary credentials. A role is not
+    a long-term credential attached to a person.
+
+    '
+  normalized_text: A role can be assumed to obtain temporary credentials. A role is
+    not a long-term credential attached to a person.
+  noise_removed: []
+relationships: []
+revision: 1
+created_at: '2026-11-02T10:00:00Z'
+updated_at: '2026-11-02T10:00:00Z'
+aliases: []
+content_hash: fdf15038ce6aae4d96cf74417139b61c97dcca75b26d2da2f74f60de042010d1
