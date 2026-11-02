@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node.js
+node_modules/
+
+# Generated build output
+public/styles.css
+
+# Local DX carriers and diffs
+.dx/
+
+# Editor and OS files
+.vs/
+.vscode/
+.DS_Store
+Thumbs.db
+*~
+*#
+*.#*#
+# Generated GitHub Pages assets
+public/styles.css
+public/data/learning-bundle.json
+public/data/learning-bundle.manifest.json

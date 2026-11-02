@@ -1,19 +1,14 @@
 {
   "name": "aws-learning-curve-content",
-  "private": true,
-  "type": "module",
   "version": "0.1.0",
+  "private": true,
+  "description": "AWS Learning Curve content and GitHub Pages build",
   "scripts": {
-    "validate": "tsx scripts/validate-content.ts",
-    "build": "tsx scripts/build-learning-bundle.ts",
-    "validate:js": "node --loader tsx scripts/validate-content.ts",
-    "build:js": "node --loader tsx scripts/build-learning-bundle.ts"
+    "build:css": "tailwindcss -i ./src/tailwind.css -o ./public/styles.css --minify",
+    "check:js": "node --check public/app.js",
+    "verify:pages": "python scripts/verify_pages.py"
   },
-  "dependencies": {
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
-    "yaml": "^2.6.0",
-    "glob": "^11.0.0",
-    "tsx": "^4.19.0"
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
   }
 }
