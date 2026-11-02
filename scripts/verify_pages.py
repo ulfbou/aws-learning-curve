@@ -30,6 +30,7 @@ def main() -> None:
         (PUBLIC / "index.html", False),
         (PUBLIC / "app.js", False),
         (PUBLIC / "styles.css", False),
+        (PUBLIC / "favicon.svg", False),
         (PUBLIC / ".nojekyll", True),
         (DATA / "learning-bundle.json", False),
         (DATA / "learning-bundle.manifest.json", False),
@@ -47,6 +48,10 @@ def main() -> None:
 
     if 'href="./styles.css"' not in index:
         fail("public/index.html does not load ./styles.css")
+
+    if 'href="./favicon.svg"' not in index:
+        fail("public/index.html does not load ./favicon.svg")
+
 
     if '<script type="module" src="./app.js"></script>' not in index:
         fail("public/index.html does not load ./app.js as a module")
