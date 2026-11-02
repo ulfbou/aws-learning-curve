@@ -7,8 +7,10 @@ venv/
 # Node.js
 node_modules/
 
-# Generated build output
+# Generated release output
+.release/
 public/styles.css
+public/data/
 
 # Local DX carriers and diffs
 .dx/
@@ -21,7 +23,3 @@ Thumbs.db
 *~
 *#
 *.#*#
-# Generated GitHub Pages assets
-public/styles.css
-public/data/learning-bundle.json
-public/data/learning-bundle.manifest.json
