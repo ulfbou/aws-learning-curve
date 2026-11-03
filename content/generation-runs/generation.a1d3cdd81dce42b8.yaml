@@ -1,0 +1,25 @@
+schema_version: '1.0'
+id: generation.a1d3cdd81dce42b8
+kind: generation_run
+created_at: '2026-11-02T11:36:46Z'
+generator:
+  type: chat_ai
+  model: unspecified
+  prompt_version: authoring-task-1.0
+operation: incremental_extract
+inputs:
+- source_packet_hash: sha256:f441ebf03c3cd627ff6f1c1903036f4b832e882bf8852c653be61c73f43a9bc1
+  transaction_id: authoring.test.dummy-authoring.001
+existing_context:
+  optimistic_concurrency: true
+  registered_source_required: true
+outputs:
+  created:
+  - concept.aws.iam.explicit-deny
+  updated: []
+  unchanged: []
+unresolved: []
+quality:
+  candidate_only: true
+  staged_validation: true
+warnings: []
