@@ -1,97 +1,379 @@
 """
-Build bundle - Python
-ADR-001,010
+Build the public browser bundle from canonical learning content.
+
+Registered source objects remain available to internal tooling and grounding,
+but they are not public learning content and are never serialized here.
 """
-import json, hashlib, pathlib, yaml, datetime
+
+from __future__ import annotations
+
+import datetime
+import hashlib
+import json
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]
-PUBLIC_DATA=ROOT/"public"/"data"
+from typing import Any
 
-def load_yaml_glob(pattern):
-    objs=[]
-    for p in ROOT.glob(pattern):
-        if not p.is_file() or p.name==".gitkeep": continue
-        doc=yaml.safe_load(p.read_text(encoding="utf-8"))
-        if doc is None: continue
-        if isinstance(doc,list): objs.extend([d for d in doc if isinstance(d,dict)])
-        else: objs.append(doc)
-    return objs
+import yaml
 
-def sha256_hex(s):
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
-def main():
-    print("📦 Building bundle - Python")
-    all_objs=[]
-    for pat in ["content/sources/**/*.yaml","content/concepts/**/*.yaml","content/competencies/**/*.yaml",
-                "content/learning-units/**/*.yaml","content/questions/**/*.yaml","content/scenarios/**/*.yaml",
-                "content/procedures/**/*.yaml","content/misconceptions/**/*.yaml"]:
-        all_objs.extend(load_yaml_glob(pat))
-    published=[o for o in all_objs if o.get("status")=="published"]
-    alias_map={}
-    for o in all_objs:
-        for a in o.get("aliases",[]):
-            alias_map[a]=o["id"]
-    manifest_path=ROOT/"content"/"manifest.yaml"
-    manifest={}
+ROOT = Path(__file__).resolve().parents[1]
+PUBLIC_DATA = ROOT / "public" / "data"
+
+SOURCE_PATTERNS = (
+    "content/sources/**/*.yaml",
+)
+
+LEARNING_OBJECT_PATTERNS = (
+    "content/concepts/**/*.yaml",
+    "content/competencies/**/*.yaml",
+    "content/learning-units/**/*.yaml",
+    "content/questions/**/*.yaml",
+    "content/scenarios/**/*.yaml",
+    "content/procedures/**/*.yaml",
+    "content/misconceptions/**/*.yaml",
+)
+
+COLLECTIONS = {
+    "concepts": {},
+    "competencies": {},
+    "learningUnits": {},
+    "questions": {},
+    "scenarios": {},
+    "procedures": {},
+    "misconceptions": {},
+    "sources": {},
+}
+
+KIND_MAP = {
+    "concept": "concepts",
+    "competency": "competencies",
+    "learning_unit": "learningUnits",
+    "question": "questions",
+    "scenario": "scenarios",
+    "procedure": "procedures",
+    "misconception": "misconceptions",
+}
+
+
+def load_yaml_glob(pattern: str) -> list[dict[str, Any]]:
+    objects: list[dict[str, Any]] = []
+
+    for path in ROOT.glob(pattern):
+        if not path.is_file() or path.name == ".gitkeep":
+            continue
+
+        document = yaml.safe_load(
+            path.read_text(encoding="utf-8")
+        )
+
+        if document is None:
+            continue
+
+        if isinstance(document, list):
+            objects.extend(
+                value
+                for value in document
+                if isinstance(value, dict)
+            )
+        elif isinstance(document, dict):
+            objects.append(document)
+
+    return objects
+
+
+def sha256_hex(value: str) -> str:
+    return hashlib.sha256(
+        value.encode("utf-8")
+    ).hexdigest()
+
+
+def add_index(
+    index: dict[str, list[str]],
+    key: str | None,
+    object_id: str,
+) -> None:
+    if not key:
+        return
+
+    values = index.setdefault(key, [])
+
+    if object_id not in values:
+        values.append(object_id)
+
+
+def main() -> None:
+    print("Building public learning bundle")
+
+    registered_sources: list[dict[str, Any]] = []
+    for pattern in SOURCE_PATTERNS:
+        registered_sources.extend(
+            load_yaml_glob(pattern)
+        )
+
+    learning_objects: list[dict[str, Any]] = []
+    for pattern in LEARNING_OBJECT_PATTERNS:
+        learning_objects.extend(
+            load_yaml_glob(pattern)
+        )
+
+    public_objects = [
+        value
+        for value in learning_objects
+        if value.get("status") == "published"
+    ]
+
+    for value in public_objects:
+        unsupported = (
+            value
+            .get("grounding", {})
+            .get("unsupported_claims")
+        )
+
+        if unsupported:
+            raise SystemExit(
+                f"Unsupported claims {value['id']}"
+            )
+
+    public_ids = {
+        value["id"]
+        for value in public_objects
+    }
+
+    alias_map: dict[str, str] = {}
+
+    for value in public_objects:
+        for alias in value.get("aliases", []) or []:
+            alias_map[str(alias)] = value["id"]
+
+    manifest_path = ROOT / "content" / "manifest.yaml"
+    manifest: dict[str, Any] = {}
+
     if manifest_path.exists():
-        manifest=yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
-        alias_map.update(manifest.get("aliases",{}) or {})
-    # invariants - raw file contents are never loaded, origin.path referencing raw is allowed
-    for o in published:
-        pass
-        if o.get("grounding",{}).get("unsupported_claims"):
-            print(f"Unsupported claims {o['id']}"); raise SystemExit(1)
+        manifest = (
+            yaml.safe_load(
+                manifest_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+            or {}
+        )
 
-    collections={"concepts":{},"competencies":{},"learningUnits":{},"questions":{},"scenarios":{},"procedures":{},"misconceptions":{},"sources":{}}
-    kind_map={"concept":"concepts","competency":"competencies","learning_unit":"learningUnits","question":"questions","scenario":"scenarios","procedure":"procedures","misconception":"misconceptions","source":"sources"}
-    for o in published:
-        b=kind_map.get(o.get("kind"))
-        if b: collections[b][o["id"]]=o
+        for alias, target in (
+            manifest.get("aliases", {}) or {}
+        ).items():
+            if target in public_ids:
+                alias_map[str(alias)] = str(target)
 
-    indexes={"byTag":{},"byCompetency":{},"byConcept":{},"byDifficulty":{},"byMisconception":{},"prerequisites":{},"contrasts":[]}
-    def add(idx,key,oid):
-        if not key: return
-        idx.setdefault(key,[])
-        if oid not in idx[key]: idx[key].append(oid)
+    collections = {
+        key: {}
+        for key in COLLECTIONS
+    }
 
-    for o in published:
-        oid=o["id"]
-        for t in o.get("tags",[]): add(indexes["byTag"],t,oid)
-        if o.get("difficulty"): add(indexes["byDifficulty"],o["difficulty"],oid)
-        for cid in o.get("competency_ids",[]): add(indexes["byCompetency"],cid,oid)
-        for cid in o.get("concept_ids",[]): add(indexes["byConcept"],cid,oid)
-        for mid in o.get("misconception_ids",[]): add(indexes["byMisconception"],mid,oid)
-        if o.get("prerequisite_ids"): indexes["prerequisites"][oid]=o["prerequisite_ids"]
-        if o.get("kind")=="concept" and o.get("concept_type")=="contrast": indexes["contrasts"].append(oid)
+    for value in public_objects:
+        collection = KIND_MAP.get(value.get("kind"))
 
-    now=manifest["generated_at"]
-    content_version=manifest.get("content_version","2026-11-01.1")
-    bundle={"schemaVersion":"1.0","contentVersion":content_version,"generatedAt":now,"aliasMap":alias_map,
-            "concepts":collections["concepts"],"competencies":collections["competencies"],
-            "learningUnits":collections["learningUnits"],"questions":collections["questions"],
-            "scenarios":collections["scenarios"],"procedures":collections["procedures"],
-            "misconceptions":collections["misconceptions"],"sources":collections["sources"],
-            "indexes":indexes,
-            "manifest":{"contentVersion":content_version,"generatedAt":now,
-                        "counts":{k:len(v) for k,v in collections.items()},
-                        "publishedOnly":True,"privateExcluded":True,"rawExcluded":True}}
+        if collection:
+            collections[collection][value["id"]] = value
 
-    PUBLIC_DATA.mkdir(parents=True, exist_ok=True)
-    bp=PUBLIC_DATA/"learning-bundle.json"
-    bp.write_text(json.dumps(bundle, indent=2, ensure_ascii=False), encoding="utf-8")
-    bh=sha256_hex(bp.read_text(encoding="utf-8"))
-    mout={"schemaVersion":"1.0","contentVersion":content_version,"generatedAt":now,
-          "bundlePath":"public/data/learning-bundle.json","bundleHash":bh,
-          "bundleSizeBytes":bp.stat().st_size,
-          "perObjectHashes":{o["id"]:o.get("content_hash") or sha256_hex(json.dumps(o, sort_keys=True)) for o in published},
-          "aliasMap":alias_map,
-          "releaseInvariants":["No private file may enter public/data","No raw source may enter bundle",
-                               "No published object may reference a candidate","No factual object may lack grounding",
-                               "No object with unsupported claims may be published","All refs resolve after alias expansion",
-                               "Bundle and manifest hashes must match"]}
-    (PUBLIC_DATA/"learning-bundle.manifest.json").write_text(json.dumps(mout, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"✅ Bundle {len(collections['concepts'])} concepts hash {bh[:12]}...")
+    indexes: dict[str, Any] = {
+        "byTag": {},
+        "byCompetency": {},
+        "byConcept": {},
+        "byDifficulty": {},
+        "byMisconception": {},
+        "prerequisites": {},
+        "contrasts": [],
+    }
 
-if __name__=="__main__":
+    for value in public_objects:
+        object_id = value["id"]
+
+        for tag in value.get("tags", []):
+            add_index(
+                indexes["byTag"],
+                tag,
+                object_id,
+            )
+
+        if value.get("difficulty"):
+            add_index(
+                indexes["byDifficulty"],
+                value["difficulty"],
+                object_id,
+            )
+
+        for concept_id in value.get(
+            "concept_ids",
+            [],
+        ):
+            add_index(
+                indexes["byConcept"],
+                concept_id,
+                object_id,
+            )
+
+        for competency_id in value.get(
+            "competency_ids",
+            [],
+        ):
+            add_index(
+                indexes["byCompetency"],
+                competency_id,
+                object_id,
+            )
+
+        for misconception_id in value.get(
+            "misconception_ids",
+            [],
+        ):
+            add_index(
+                indexes["byMisconception"],
+                misconception_id,
+                object_id,
+            )
+
+        prerequisites = value.get(
+            "prerequisite_ids"
+        )
+
+        if prerequisites:
+            indexes["prerequisites"][
+                object_id
+            ] = prerequisites
+
+        if (
+            value.get("kind") == "concept"
+            and value.get("concept_type")
+            == "contrast"
+        ):
+            indexes["contrasts"].append(
+                object_id
+            )
+
+    generated_at = manifest.get(
+        "generated_at",
+        datetime.datetime.now(
+            datetime.timezone.utc
+        ).isoformat(),
+    )
+    content_version = manifest.get(
+        "content_version",
+        "2026-11-01.1",
+    )
+
+    bundle = {
+        "schemaVersion": "1.0",
+        "contentVersion": content_version,
+        "generatedAt": generated_at,
+        "aliasMap": alias_map,
+        "concepts": collections["concepts"],
+        "competencies": collections[
+            "competencies"
+        ],
+        "learningUnits": collections[
+            "learningUnits"
+        ],
+        "questions": collections["questions"],
+        "scenarios": collections["scenarios"],
+        "procedures": collections["procedures"],
+        "misconceptions": collections[
+            "misconceptions"
+        ],
+        "sources": {},
+        "indexes": indexes,
+        "manifest": {
+            "contentVersion": content_version,
+            "generatedAt": generated_at,
+            "counts": {
+                key: len(value)
+                for key, value
+                in collections.items()
+            },
+            "publishedOnly": True,
+            "privateExcluded": True,
+            "registeredSourcesExcluded": True,
+        },
+    }
+
+    PUBLIC_DATA.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    bundle_path = (
+        PUBLIC_DATA
+        / "learning-bundle.json"
+    )
+
+    bundle_path.write_text(
+        json.dumps(
+            bundle,
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    bundle_text = bundle_path.read_text(
+        encoding="utf-8"
+    )
+    bundle_hash = sha256_hex(bundle_text)
+
+    public_manifest = {
+        "schemaVersion": "1.0",
+        "contentVersion": content_version,
+        "generatedAt": generated_at,
+        "bundlePath": (
+            "public/data/learning-bundle.json"
+        ),
+        "bundleHash": bundle_hash,
+        "bundleSizeBytes": (
+            bundle_path.stat().st_size
+        ),
+        "perObjectHashes": {
+            value["id"]: (
+                value.get("content_hash")
+                or sha256_hex(
+                    json.dumps(
+                        value,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    )
+                )
+            )
+            for value in public_objects
+        },
+        "aliasMap": alias_map,
+        "releaseInvariants": [
+            "Private learner state is excluded from public/data.",
+            "Registered source objects and source fragments are excluded from the public bundle.",
+            "Only published learning objects are serialized.",
+            "No published object may reference an unpublished learning object.",
+            "No published object may contain unsupported claims.",
+            "All public references resolve after alias expansion.",
+            "Bundle and manifest hashes match.",
+        ],
+    }
+
+    (
+        PUBLIC_DATA
+        / "learning-bundle.manifest.json"
+    ).write_text(
+        json.dumps(
+            public_manifest,
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    print(
+        "Public bundle built: "
+        f"{len(public_objects)} learning objects, "
+        f"{len(registered_sources)} registered sources excluded, "
+        f"hash {bundle_hash[:12]}..."
+    )
+
+
+if __name__ == "__main__":
     main()

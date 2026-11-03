@@ -19,7 +19,6 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out frontend revision
         uses: actions/checkout@v4
@@ -61,6 +60,12 @@ jobs:
             tests.test_learning_workflow_chat_task \
             tests.test_learning_workflow_surface
 
+      - name: Test public content boundary
+        working-directory: frontend
+        run: |
+          python -m unittest -v \
+            tests.test_public_content_boundary
+
       - name: Build verified release transaction
         run: >-
           python frontend/scripts/release.py
@@ -87,15 +92,12 @@ jobs:
     if: github.event_name != 'pull_request'
     needs: release
     runs-on: ubuntu-latest
-
     permissions:
       pages: write
       id-token: write
-
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - name: Deploy exact verified artifact
         id: deployment
