@@ -52,6 +52,13 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Test bounded learning workflow
+        working-directory: frontend
+        run: |
+          python -m unittest -v \
+            tests.test_learning_workflow_conflicts \
+            tests.test_learning_workflow_e2e
+
       - name: Build verified release transaction
         run: >-
           python frontend/scripts/release.py
