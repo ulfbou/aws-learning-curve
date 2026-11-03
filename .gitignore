@@ -7,17 +7,11 @@ venv/
 # Node.js
 node_modules/
 
-# Generated release output
-.release/
+# Generated build output
 public/styles.css
-public/data/
 
 # Local DX carriers and diffs
 .dx/
-
-# Private and transient authoring inputs
-.private/
-.authoring/
 
 # Editor and OS files
 .vs/
@@ -27,3 +21,7 @@ Thumbs.db
 *~
 *#
 *.#*#
+# Generated GitHub Pages assets
+public/styles.css
+public/data/learning-bundle.json
+public/data/learning-bundle.manifest.json

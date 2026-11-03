@@ -795,10 +795,14 @@ def validate_staged(staged_content: Path) -> None:
         result = subprocess.run(
             [
                 sys.executable,
+                "-X",
+                "utf8",
                 str(root / "scripts" / "validate_content.py"),
             ],
             cwd=root,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             capture_output=True,
             check=False,
         )
