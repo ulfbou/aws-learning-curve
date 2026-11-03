@@ -5,55 +5,78 @@ The tooling lives on `master`; canonical `content/**` lives in the `backend` wor
 The stable workflow is:
 
 ```text
-query -> candidate transaction -> prepare immutable plan -> dry-run plan -> execute same plan
+chat task -> AI candidate transaction -> prepare immutable plan -> dry-run plan -> human review -> execute same plan
 ```
 
-## Query
+## Generate the chat-ready IAM task
+
+From the frontend worktree:
 
 ```bash
-py scripts/content_workflow.py \
+mkdir -p .dx
+
+py -X utf8 scripts/content_workflow.py \
   --content-workspace ../aws-learning-curve-backend \
-  query \
-  --goal "Understand the difference between IAM users, roles, and policies" \
+  chat-task \
+  --goal "Understand the difference between IAM users, roles, and policies." \
   --id aws.iam.user-vs-role-vs-policy \
+  --tag iam \
   --kind concept \
   --status published \
   --status candidate \
-  -o .dx/iam-learning-context.json
+  -o .dx/iam-learning-task.md
 ```
 
-The result contains backend objects and direct relationships. Paths are repository-derived and remain under the backend `content/` tree.
+The command reuses the deterministic bounded query. It writes a complete UTF-8 handoff under `.dx/` and does not mutate frontend or backend content. The task embeds the actual bounded context and the authoritative `schemas/learning-transaction.schema.json` contract.
 
-## Candidate transaction
+If the requested comparison ID is absent, `missing_ids` records that fact. The AI must not invent an existing target. It may propose a schema-valid `create`, `update`, or `unchanged` operation based only on the supplied context.
 
-The AI returns semantic content conforming to `schemas/learning-transaction.schema.json`. It does not assign paths or authoritative revision, timestamp, or hash fields.
+Give `.dx/iam-learning-task.md` to the chat AI. Save the exact JSON response, without prose or code fences, as:
+
+```text
+.dx/iam-learning-transaction.json
+```
+
+The AI supplies semantic content only. It must not choose repository paths or authoritatively assign revisions, timestamps, hashes, prepared-plan fields, commit state, publication state, or learner mastery.
 
 ## Prepare once
 
 ```bash
-py scripts/content_workflow.py \
+py -X utf8 scripts/content_workflow.py \
   --content-workspace ../aws-learning-curve-backend \
   prepare .dx/iam-learning-transaction.json \
   -o .dx/iam-prepared-plan.json
 ```
 
-Python creates `prepared_at` once and emits a hash-protected prepared plan containing exact UTF-8 payload bytes. Review and retain this artifact. Do not regenerate it between dry-run and execute.
+Python validates the existing transaction schema, derives repository paths, assigns system fields, creates `prepared_at` once, and emits a hash-protected plan containing the exact UTF-8 payload bytes. Retain this artifact. Do not regenerate it between dry-run and execution.
 
 ## Dry-run the prepared plan
 
 ```bash
-py scripts/content_workflow.py \
+py -X utf8 scripts/content_workflow.py \
   --content-workspace ../aws-learning-curve-backend \
   apply .dx/iam-prepared-plan.json \
   -o .dx/iam-dry-run-result.json
 ```
 
-Dry-run stages backend content with tooling-owned schemas and scripts, writes the exact prepared payloads there, and runs the repository validator. It does not mutate the backend worktree.
+Dry-run stages backend content with the frontend-owned schemas and scripts, writes the exact prepared payloads there, and runs repository validation. It does not mutate the backend worktree.
 
-## Execute the same plan
+Review:
+
+- the candidate transaction;
+- the prepared plan;
+- the dry-run result;
+- the exact planned paths and hashes;
+- the current Git state of the backend worktree.
+
+A successful dry-run does not trigger execution.
+
+## Execute the same reviewed plan
+
+Only after human review:
 
 ```bash
-py scripts/content_workflow.py \
+py -X utf8 scripts/content_workflow.py \
   --content-workspace ../aws-learning-curve-backend \
   apply .dx/iam-prepared-plan.json \
   --execute \
@@ -62,4 +85,20 @@ py scripts/content_workflow.py \
 
 Execution rejects the plan if any target changed after preparation. It writes the exact payload bytes reviewed during dry-run and performs best-effort rollback if writing or validation fails. Multi-file writing is not described as atomic.
 
-Git branch, commit, push, PR, merge, release, and deployment remain outside this workflow. A successful operation proves repository-tooling success, not learner mastery.
+Git branch, commit, push, pull request, merge, release, and deployment remain outside this workflow. A successful operation proves repository-tooling success, not learner mastery.
+
+## Human acceptance record
+
+Keep the first acceptance record as a durable `.dx/` working artifact, not as a new private-state subsystem. Record:
+
+```text
+learning goal:
+context artifact:
+prepared plan SHA-256:
+dry-run result:
+applied or rejected:
+short study interaction:
+learner-provided unresolved point:
+```
+
+The unresolved point must come from the learner after short study use. Python and AI must not infer it as an authoritative fact.
