@@ -57,7 +57,8 @@ jobs:
         run: |
           python -m unittest -v \
             tests.test_learning_workflow_conflicts \
-            tests.test_learning_workflow_e2e
+            tests.test_learning_workflow_e2e \
+            tests.test_learning_workflow_chat_task
 
       - name: Build verified release transaction
         run: >-

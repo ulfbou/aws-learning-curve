@@ -52,6 +52,14 @@ def resolved_command(command: tuple[str, ...]) -> list[str]:
     return resolved
 
 
+def subprocess_environment() -> dict[str, str]:
+    """Return a subprocess environment with explicit UTF-8 text handling."""
+    environment = os.environ.copy()
+    environment["PYTHONUTF8"] = "1"
+    environment["PYTHONIOENCODING"] = "utf-8"
+    return environment
+
+
 def run(*command: str, cwd: Path) -> None:
     resolved = resolved_command(command)
     print(f"[release] {' '.join(resolved)}", flush=True)
@@ -60,6 +68,7 @@ def run(*command: str, cwd: Path) -> None:
         result = subprocess.run(
             resolved,
             cwd=cwd,
+            env=subprocess_environment(),
             check=False,
         )
     except OSError as error:
@@ -82,7 +91,10 @@ def capture(*command: str, cwd: Path) -> str:
         result = subprocess.run(
             resolved,
             cwd=cwd,
+            env=subprocess_environment(),
             text=True,
+            encoding="utf-8",
+            errors="replace",
             capture_output=True,
             check=False,
         )
