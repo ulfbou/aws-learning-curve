@@ -19,6 +19,7 @@ from learning_workflow.engine import (  # noqa: E402
     WorkflowError,
     apply_transaction,
     plan_transaction,
+    prepare_transaction,
 )
 
 
@@ -247,6 +248,39 @@ class ConflictHandlingTests(unittest.TestCase):
             self.object_path.read_bytes(),
             self.original_bytes,
         )
+
+    def test_semantically_identical_plans_have_same_content_hash(
+        self,
+    ) -> None:
+        first = prepare_transaction(
+            self.root,
+            self.root,
+            update_transaction(),
+            prepared_at="2026-11-03T08:00:00+00:00",
+        )
+        second = prepare_transaction(
+            self.root,
+            self.root,
+            update_transaction(),
+            prepared_at="2026-11-03T09:00:00+00:00",
+        )
+
+        first_operation = first["operations"][0]
+        second_operation = second["operations"][0]
+
+        self.assertEqual(
+            first_operation["content_hash"],
+            second_operation["content_hash"],
+        )
+        self.assertNotEqual(
+            first_operation["payload_sha256"],
+            second_operation["payload_sha256"],
+        )
+        self.assertNotEqual(
+            first["plan_sha256"],
+            second["plan_sha256"],
+        )
+
 
 
 if __name__ == "__main__":

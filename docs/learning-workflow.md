@@ -1,113 +1,65 @@
 # Bounded learning workflow
 
-The workflow has three repository operations:
+The tooling lives on `master`; canonical `content/**` lives in the `backend` worktree. The CLI derives its tooling root from `scripts/content_workflow.py` and accepts only the content workspace explicitly.
+
+The stable workflow is:
 
 ```text
-query -> prepare -> apply
+query -> candidate transaction -> prepare immutable plan -> dry-run plan -> execute same plan
 ```
 
-`apply` is a dry-run unless `--execute` is supplied.
-
-## 1. Create bounded context
+## Query
 
 ```bash
-py scripts/content_workflow.py --workspace . query \
+py scripts/content_workflow.py \
+  --content-workspace ../aws-learning-curve-backend \
+  query \
   --goal "Understand the difference between IAM users, roles, and policies" \
-  --keyword IAM \
-  --tag iam \
+  --id aws.iam.user-vs-role-vs-policy \
   --kind concept \
-  --kind misconception \
-  --kind question \
   --status published \
   --status candidate \
   -o .dx/iam-learning-context.json
 ```
 
-The result contains exact repository objects, direct relationships, revisions,
-content hashes, and file hashes. It does not authorize a repository change.
+The result contains backend objects and direct relationships. Paths are repository-derived and remain under the backend `content/` tree.
 
-## 2. Ask AI for one candidate transaction
+## Candidate transaction
 
-The AI response must conform to `schemas/learning-transaction.schema.json`.
-Python derives paths and system fields. The AI supplies semantic content only.
+The AI returns semantic content conforming to `schemas/learning-transaction.schema.json`. It does not assign paths or authoritative revision, timestamp, or hash fields.
 
-```json
-{
-  "schema_version": "1.0",
-  "learning_goal": "Understand the difference between IAM users, roles, and policies",
-  "operations": [
-    {
-      "action": "update",
-      "id": "aws.iam.role",
-      "kind": "concept",
-      "expected_revision": 1,
-      "expected_content_hash": "<64 lowercase hex characters from the context>",
-      "content": {
-        "schema_version": "1.0",
-        "status": "candidate",
-        "domain": "aws-cloud",
-        "labels": {"en": {"preferred": "IAM role"}},
-        "definition": {"en": "A proposed improved learning definition."},
-        "provenance": {},
-        "grounding": {},
-        "aliases": []
-      }
-    }
-  ]
-}
-```
-
-The semantic content still has to satisfy the repository's object schema and
-source policy. System-managed values in `content` are ignored.
-
-## 3. Prepare
+## Prepare once
 
 ```bash
-py scripts/content_workflow.py --workspace . prepare \
-  .dx/iam-learning-transaction.json \
-  -o .dx/iam-prepare-result.json
+py scripts/content_workflow.py \
+  --content-workspace ../aws-learning-curve-backend \
+  prepare .dx/iam-learning-transaction.json \
+  -o .dx/iam-prepared-plan.json
 ```
 
-This checks the transaction contract, target identity, kind, revision, content
-hash, and derived repository path. It does not write files.
+Python creates `prepared_at` once and emits a hash-protected prepared plan containing exact UTF-8 payload bytes. Review and retain this artifact. Do not regenerate it between dry-run and execute.
 
-## 4. Dry-run
+## Dry-run the prepared plan
 
 ```bash
-py scripts/content_workflow.py --workspace . apply \
-  .dx/iam-learning-transaction.json \
+py scripts/content_workflow.py \
+  --content-workspace ../aws-learning-curve-backend \
+  apply .dx/iam-prepared-plan.json \
   -o .dx/iam-dry-run-result.json
 ```
 
-The dry-run copies `content/`, `schemas/`, and `scripts/` to a temporary
-workspace, applies the planned files there, and runs the repository validator.
+Dry-run stages backend content with tooling-owned schemas and scripts, writes the exact prepared payloads there, and runs the repository validator. It does not mutate the backend worktree.
 
-## 5. Apply after review
+## Execute the same plan
 
 ```bash
-py scripts/content_workflow.py --workspace . apply \
-  .dx/iam-learning-transaction.json \
+py scripts/content_workflow.py \
+  --content-workspace ../aws-learning-curve-backend \
+  apply .dx/iam-prepared-plan.json \
   --execute \
   -o .dx/iam-apply-result.json
 ```
 
-Apply writes the planned files and runs repository validation. If writing or
-validation fails, the workflow performs best-effort rollback of files changed
-by that operation. A multi-file write is not described as atomic.
+Execution rejects the plan if any target changed after preparation. It writes the exact payload bytes reviewed during dry-run and performs best-effort rollback if writing or validation fails. Multi-file writing is not described as atomic.
 
-Git branch, commit, push, pull request, merge, release, and deployment remain
-outside this learning workflow.
-
-## 6. Use the artifact
-
-A successful operation result proves only that repository tooling completed.
-It does not prove learning.
-
-Use the changed artifact in a short study session and explicitly record the
-remaining uncertainty, for example:
-
-```text
-I now understand role assumption, but trust policies are still unclear.
-```
-
-Use that unresolved point as the next learning need.
+Git branch, commit, push, PR, merge, release, and deployment remain outside this workflow. A successful operation proves repository-tooling success, not learner mastery.

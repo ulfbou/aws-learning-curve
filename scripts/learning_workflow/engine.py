@@ -1,6 +1,7 @@
-"""Deterministic bounded learning-context and transaction engine."""
+"""Deterministic bounded learning-context and prepared-plan engine."""
 from __future__ import annotations
 
+import base64
 import copy
 import hashlib
 import json
@@ -29,6 +30,12 @@ COLLECTIONS = {
     "generation_run": "generation-runs",
 }
 SYSTEM_FIELDS = {"revision", "created_at", "updated_at", "content_hash"}
+HASH_EXCLUDED_FIELDS = {
+    "revision",
+    "created_at",
+    "updated_at",
+    "content_hash",
+}
 REFERENCE_KEYS = {
     "target_id", "concept_id", "source_id", "fragment_id", "run_id",
     "prerequisite_ids", "concept_ids", "competency_ids", "learning_objectives",
@@ -36,6 +43,7 @@ REFERENCE_KEYS = {
     "question_ids", "scenario_ids", "learning_unit_ids", "source_ids", "fragment_ids",
 }
 ID_RE = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+){1,10}$")
+HEX_RE = re.compile(r"^[a-f0-9]{64}$")
 
 
 class WorkflowError(RuntimeError):
@@ -60,16 +68,26 @@ def canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
 def semantic_hash(value: dict[str, Any]) -> str:
-    semantic = {k: v for k, v in value.items() if k != "content_hash"}
-    return hashlib.sha256(canonical_json(semantic).encode("utf-8")).hexdigest()
+    semantic = {
+        key: item
+        for key, item in value.items()
+        if key not in HASH_EXCLUDED_FIELDS
+    }
+    return sha256_bytes(
+        canonical_json(semantic).encode("utf-8")
+    )
 
 
-def load_repository(root: Path) -> dict[str, Record]:
-    content = root / "content"
-    records: dict[str, Record] = {}
+def load_repository(content_workspace: Path) -> dict[str, Record]:
+    content = content_workspace / "content"
     if not content.is_dir():
         raise WorkflowError(f"content directory not found: {content}")
+    records: dict[str, Record] = {}
     for path in sorted(content.rglob("*.yaml")):
         if path.name == "manifest.yaml":
             continue
@@ -77,9 +95,8 @@ def load_repository(root: Path) -> dict[str, Record]:
         try:
             parsed = yaml.safe_load(raw.decode("utf-8"))
         except (UnicodeDecodeError, yaml.YAMLError) as exc:
-            raise WorkflowError(f"cannot load {path.relative_to(root)}: {exc}") from exc
-        objects = parsed if isinstance(parsed, list) else [parsed]
-        for obj in objects:
+            raise WorkflowError(f"cannot load {path.relative_to(content_workspace)}: {exc}") from exc
+        for obj in parsed if isinstance(parsed, list) else [parsed]:
             if not isinstance(obj, dict) or not isinstance(obj.get("id"), str):
                 continue
             object_id = obj["id"]
@@ -87,17 +104,17 @@ def load_repository(root: Path) -> dict[str, Record]:
                 raise WorkflowError(f"duplicate semantic ID: {object_id}")
             records[object_id] = Record(
                 object_id, str(obj.get("kind", "")), obj.get("status"), path, obj,
-                hashlib.sha256(raw).hexdigest(),
+                sha256_bytes(raw),
             )
     return records
 
 
-def aliases_for(records: dict[str, Record], root: Path) -> dict[str, str]:
+def aliases_for(records: dict[str, Record], content_workspace: Path) -> dict[str, str]:
     aliases: dict[str, str] = {}
     for record in records.values():
         for alias in record.data.get("aliases", []) or []:
             aliases[str(alias)] = record.object_id
-    manifest = root / "content" / "manifest.yaml"
+    manifest = content_workspace / "content" / "manifest.yaml"
     if manifest.is_file():
         data = yaml.safe_load(manifest.read_text(encoding="utf-8")) or {}
         aliases.update({str(k): str(v) for k, v in (data.get("aliases") or {}).items()})
@@ -115,13 +132,9 @@ def iter_reference_ids(value: Any, key: str | None = None) -> Iterable[str]:
         yield value
 
 
-def searchable_text(record: Record) -> str:
-    return canonical_json(record.data).casefold()
-
-
-def build_context(root: Path, request: dict[str, Any]) -> dict[str, Any]:
-    records = load_repository(root)
-    aliases = aliases_for(records, root)
+def build_context(content_workspace: Path, request: dict[str, Any]) -> dict[str, Any]:
+    records = load_repository(content_workspace)
+    aliases = aliases_for(records, content_workspace)
     ids = [str(x) for x in request.get("ids", [])]
     ids += [aliases.get(str(x), str(x)) for x in request.get("aliases", [])]
     keywords = [str(x).casefold() for x in request.get("keywords", []) if str(x).strip()]
@@ -134,32 +147,29 @@ def build_context(root: Path, request: dict[str, Any]) -> dict[str, Any]:
 
     selected: set[str] = set()
     for object_id, record in records.items():
-        exact = object_id in ids
-        keyword_match = bool(keywords) and all(word in searchable_text(record) for word in keywords)
-        tag_match = bool(tags) and bool(tags.intersection(record.data.get("tags", []) or []))
-        if not (exact or keyword_match or tag_match):
-            continue
-        if kinds and record.kind not in kinds:
-            continue
-        if statuses and record.status not in statuses:
-            continue
-        selected.add(object_id)
+        text = canonical_json(record.data).casefold()
+        matched = (
+            object_id in ids
+            or (bool(keywords) and all(word in text for word in keywords))
+            or (bool(tags) and bool(tags.intersection(record.data.get("tags", []) or [])))
+        )
+        if matched and (not kinds or record.kind in kinds) and (not statuses or record.status in statuses):
+            selected.add(object_id)
 
-    missing = sorted(set(ids) - set(records))
     direct: set[str] = set()
     if request.get("include_direct_relationships", True):
         for object_id in selected:
             direct.update(ref for ref in iter_reference_ids(records[object_id].data) if ref in records)
-    ordered_primary = sorted(selected)
-    ordered_related = sorted(direct - selected)
-    ordered = (ordered_primary + ordered_related)[:limit]
+    primary = sorted(selected)
+    related = sorted(direct - selected)
+    allowed = set((primary + related)[:limit])
 
     def packet(record: Record) -> dict[str, Any]:
         return {
             "id": record.object_id,
             "kind": record.kind,
             "status": record.status,
-            "path": record.path.relative_to(root).as_posix(),
+            "path": record.path.relative_to(content_workspace).as_posix(),
             "revision": record.data.get("revision"),
             "content_hash": record.data.get("content_hash"),
             "file_sha256": record.file_sha256,
@@ -171,39 +181,42 @@ def build_context(root: Path, request: dict[str, Any]) -> dict[str, Any]:
         "packet_type": "learning_context",
         "learning_goal": str(request.get("learning_goal", "")).strip(),
         "query": {
-            "ids": ids, "keywords": request.get("keywords", []),
-            "tags": sorted(tags), "kinds": sorted(kinds), "statuses": sorted(statuses),
+            "ids": ids,
+            "keywords": request.get("keywords", []),
+            "tags": sorted(tags),
+            "kinds": sorted(kinds),
+            "statuses": sorted(statuses),
             "include_direct_relationships": bool(request.get("include_direct_relationships", True)),
         },
-        "matches": [packet(records[x]) for x in ordered_primary if x in ordered],
-        "related_objects": [packet(records[x]) for x in ordered_related if x in ordered],
-        "missing_ids": missing,
+        "matches": [packet(records[x]) for x in primary if x in allowed],
+        "related_objects": [packet(records[x]) for x in related if x in allowed],
+        "missing_ids": sorted(set(ids) - set(records)),
         "context_limits": {"maximum_objects": limit, "direct_relationships_only": True},
-        "repository": {"root": str(root.resolve()), "object_count": len(records)},
+        "repository": {"content_workspace": str(content_workspace.resolve()), "object_count": len(records)},
     }
 
 
-def load_schema(root: Path) -> dict[str, Any]:
-    path = root / "schemas" / "learning-transaction.schema.json"
+def load_transaction_schema(tooling_root: Path) -> dict[str, Any]:
+    path = tooling_root / "schemas" / "learning-transaction.schema.json"
     if not path.is_file():
         raise WorkflowError(f"transaction schema not found: {path}")
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def validate_transaction(root: Path, transaction: dict[str, Any]) -> None:
+def validate_transaction(tooling_root: Path, transaction: dict[str, Any]) -> None:
     errors = sorted(
-        Draft202012Validator(load_schema(root)).iter_errors(transaction),
-        key=lambda e: list(e.path),
+        Draft202012Validator(load_transaction_schema(tooling_root)).iter_errors(transaction),
+        key=lambda error: list(error.path),
     )
     if errors:
         rendered = "; ".join(
-            f"{'/'.join(map(str, e.path)) or '<root>'}: {e.message}"
-            for e in errors
+            f"{'/'.join(map(str, error.path)) or '<root>'}: {error.message}"
+            for error in errors
         )
         raise WorkflowError(f"invalid transaction: {rendered}")
 
 
-def target_path(root: Path, obj: dict[str, Any]) -> Path:
+def relative_target(obj: dict[str, Any]) -> Path:
     kind = str(obj.get("kind", ""))
     object_id = str(obj.get("id", ""))
     collection = COLLECTIONS.get(kind)
@@ -211,19 +224,19 @@ def target_path(root: Path, obj: dict[str, Any]) -> Path:
         raise WorkflowError(f"unsupported kind: {kind}")
     if not ID_RE.match(object_id):
         raise WorkflowError(f"unsafe semantic ID: {object_id!r}")
-    path = root / "content" / collection / f"{object_id}.yaml"
-    resolved_parent = path.parent.resolve()
-    content_root = (root / "content").resolve()
-    if content_root != resolved_parent and content_root not in resolved_parent.parents:
-        raise WorkflowError(f"derived path escapes content root: {path}")
+    return Path("content") / collection / f"{object_id}.yaml"
+
+
+def target_path(content_workspace: Path, relative: str) -> Path:
+    path = content_workspace / Path(relative)
+    resolved = path.resolve()
+    content_root = (content_workspace / "content").resolve()
+    if content_root not in resolved.parents:
+        raise WorkflowError(f"prepared path escapes content root: {relative}")
     return path
 
 
-def enrich(
-    operation: dict[str, Any],
-    current: Record | None,
-    now: str,
-) -> dict[str, Any]:
+def enrich(operation: dict[str, Any], current: Record | None, prepared_at: str) -> dict[str, Any]:
     proposed = copy.deepcopy(operation["content"])
     proposed["id"] = operation["id"]
     proposed["kind"] = operation["kind"]
@@ -231,95 +244,151 @@ def enrich(
         proposed.pop(field, None)
     if current is None:
         proposed["revision"] = 1
-        proposed["created_at"] = now
+        proposed["created_at"] = prepared_at
     else:
         proposed["revision"] = int(current.data.get("revision", 0)) + 1
-        proposed["created_at"] = current.data.get("created_at", now)
-    proposed["updated_at"] = now
+        proposed["created_at"] = current.data.get("created_at", prepared_at)
+    proposed["updated_at"] = prepared_at
     proposed["content_hash"] = semantic_hash(proposed)
     return proposed
 
 
-def plan_transaction(
-    root: Path,
+def prepare_transaction(
+    tooling_root: Path,
+    content_workspace: Path,
     transaction: dict[str, Any],
-) -> tuple[dict[str, Any], list[tuple[Path, bytes]]]:
-    validate_transaction(root, transaction)
-    records = load_repository(root)
-    writes: list[tuple[Path, bytes]] = []
+    prepared_at: str | None = None,
+) -> dict[str, Any]:
+    validate_transaction(tooling_root, transaction)
+    records = load_repository(content_workspace)
+    timestamp = prepared_at or utc_now()
+    operations: list[dict[str, Any]] = []
     changes = {"created": [], "updated": [], "unchanged": []}
-    now = utc_now()
     seen: set[str] = set()
 
     for operation in transaction["operations"]:
         object_id = operation["id"]
         if object_id in seen:
-            raise WorkflowError(
-                f"transaction contains duplicate operation for {object_id}"
-            )
+            raise WorkflowError(f"transaction contains duplicate operation for {object_id}")
         seen.add(object_id)
         action = operation["action"]
         current = records.get(object_id)
-
         if action == "unchanged":
             if current is None:
-                raise WorkflowError(
-                    f"unchanged target does not exist: {object_id}"
-                )
+                raise WorkflowError(f"unchanged target does not exist: {object_id}")
             changes["unchanged"].append(object_id)
             continue
-
         if action == "create" and current is not None:
             raise WorkflowError(f"create target already exists: {object_id}")
-
         if action == "update":
             if current is None:
-                raise WorkflowError(
-                    f"update target does not exist: {object_id}"
-                )
+                raise WorkflowError(f"update target does not exist: {object_id}")
             if operation.get("expected_revision") != current.data.get("revision"):
                 raise WorkflowError(f"revision conflict for {object_id}")
-            if (
-                operation.get("expected_content_hash")
-                != current.data.get("content_hash")
-            ):
+            if operation.get("expected_content_hash") != current.data.get("content_hash"):
                 raise WorkflowError(f"content hash conflict for {object_id}")
             if operation["kind"] != current.kind:
                 raise WorkflowError(f"kind cannot change for {object_id}")
 
-        enriched = enrich(operation, current, now)
-        path = target_path(root, enriched)
-
-        if current is not None and path.resolve() != current.path.resolve():
-            raise WorkflowError(
-                f"derived path differs from current repository path for {object_id}"
-            )
-
-        payload = yaml.safe_dump(
-            enriched,
-            allow_unicode=True,
-            sort_keys=False,
-        ).encode("utf-8")
-
-        writes.append((path, payload))
+        enriched = enrich(operation, current, timestamp)
+        relative = relative_target(enriched).as_posix()
+        if current is not None and (content_workspace / relative).resolve() != current.path.resolve():
+            raise WorkflowError(f"derived path differs from current repository path for {object_id}")
+        payload = yaml.safe_dump(enriched, allow_unicode=True, sort_keys=False).encode("utf-8")
+        operations.append({
+            "action": action,
+            "id": object_id,
+            "kind": operation["kind"],
+            "path": relative,
+            "expected_file_sha256": current.file_sha256 if current else None,
+            "payload_sha256": sha256_bytes(payload),
+            "content_hash": enriched["content_hash"],
+            "payload_base64": base64.b64encode(payload).decode("ascii"),
+        })
         changes["created" if action == "create" else "updated"].append(object_id)
 
-    result = {
+    plan = {
         "schema_version": "1.0",
-        "operation": "apply",
-        "result": "planned",
+        "plan_type": "prepared_learning_transaction",
+        "prepared_at": timestamp,
         "learning_goal": transaction["learning_goal"],
         "changes": changes,
-        "warnings": [],
-        "next_actions": ["review the proposed repository changes"],
+        "operations": operations,
     }
-    return result, writes
+    plan["plan_sha256"] = sha256_bytes(canonical_json(plan).encode("utf-8"))
+    return plan
 
 
-def write_with_rollback(
-    writes: list[tuple[Path, bytes]],
-    validator,
-) -> None:
+def validate_prepared_plan(plan: dict[str, Any]) -> None:
+    required = {
+        "schema_version", "plan_type", "prepared_at", "learning_goal",
+        "changes", "operations", "plan_sha256",
+    }
+    if set(plan) != required or plan.get("schema_version") != "1.0" or plan.get("plan_type") != "prepared_learning_transaction":
+        raise WorkflowError("invalid prepared plan envelope")
+    unsigned = {key: value for key, value in plan.items() if key != "plan_sha256"}
+    if plan["plan_sha256"] != sha256_bytes(canonical_json(unsigned).encode("utf-8")):
+        raise WorkflowError("prepared plan hash mismatch")
+    if not isinstance(plan["operations"], list):
+        raise WorkflowError("prepared plan operations must be an array")
+    for operation in plan["operations"]:
+        expected = {
+            "action", "id", "kind", "path", "expected_file_sha256",
+            "payload_sha256", "content_hash", "payload_base64",
+        }
+        if set(operation) != expected:
+            raise WorkflowError("invalid prepared operation")
+        if not HEX_RE.match(operation["payload_sha256"]) or not HEX_RE.match(operation["content_hash"]):
+            raise WorkflowError("invalid prepared operation hash")
+        try:
+            payload = base64.b64decode(operation["payload_base64"], validate=True)
+        except Exception as exc:
+            raise WorkflowError("invalid prepared payload encoding") from exc
+        if sha256_bytes(payload) != operation["payload_sha256"]:
+            raise WorkflowError(f"prepared payload hash mismatch for {operation['id']}")
+
+
+def planned_writes(content_workspace: Path, plan: dict[str, Any]) -> list[tuple[Path, bytes]]:
+    validate_prepared_plan(plan)
+    writes: list[tuple[Path, bytes]] = []
+    for operation in plan["operations"]:
+        path = target_path(content_workspace, operation["path"])
+        current_hash = sha256_bytes(path.read_bytes()) if path.is_file() else None
+        if current_hash != operation["expected_file_sha256"]:
+            raise WorkflowError(f"stale prepared plan for {operation['id']}")
+        payload = base64.b64decode(operation["payload_base64"], validate=True)
+        writes.append((path, payload))
+    return writes
+
+
+def assemble_validation_workspace(tooling_root: Path, content_workspace: Path, target: Path) -> None:
+    shutil.copytree(content_workspace / "content", target / "content")
+    shutil.copytree(tooling_root / "schemas", target / "schemas")
+    shutil.copytree(tooling_root / "scripts", target / "scripts")
+
+
+def run_repository_validator(tooling_root: Path, content_workspace: Path) -> None:
+    script = tooling_root / "scripts" / "validate_content.py"
+    if not script.is_file():
+        raise WorkflowError(f"repository validator not found: {script}")
+    with tempfile.TemporaryDirectory(prefix="learning-validation-") as directory:
+        staged = Path(directory) / "workspace"
+        assemble_validation_workspace(tooling_root, content_workspace, staged)
+        completed = subprocess.run(
+            [sys.executable, "-X", "utf8", str(staged / "scripts" / "validate_content.py")],
+            cwd=staged,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode:
+            detail = completed.stderr.strip() or completed.stdout.strip()
+            raise WorkflowError(f"repository validation failed: {detail}")
+
+
+def write_with_rollback(writes: list[tuple[Path, bytes]], validator) -> None:
     backups: dict[Path, bytes | None] = {}
     try:
         for path, payload in writes:
@@ -338,72 +407,73 @@ def write_with_rollback(
         raise
 
 
-def run_repository_validator(root: Path) -> None:
-    script = root / "scripts" / "validate_content.py"
-    if not script.is_file():
-        raise WorkflowError(f"repository validator not found: {script}")
+def result_for(plan: dict[str, Any], operation: str) -> dict[str, Any]:
+    return {
+        "schema_version": "1.0",
+        "operation": operation,
+        "result": "success",
+        "prepared_at": plan["prepared_at"],
+        "plan_sha256": plan["plan_sha256"],
+        "learning_goal": plan["learning_goal"],
+        "changes": plan["changes"],
+        "planned_outputs": [
+            {
+                "id": item["id"],
+                "path": item["path"],
+                "payload_sha256": item["payload_sha256"],
+                "content_hash": item["content_hash"],
+            }
+            for item in plan["operations"]
+        ],
+        "warnings": [],
+    }
 
-    completed = subprocess.run(
-        [sys.executable, str(script)],
-        cwd=root,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if completed.returncode:
-        detail = completed.stderr.strip() or completed.stdout.strip()
-        raise WorkflowError(f"repository validation failed: {detail}")
 
-
-def dry_run(
-    root: Path,
-    transaction: dict[str, Any],
-) -> dict[str, Any]:
-    result, writes = plan_transaction(root, transaction)
-
-    with tempfile.TemporaryDirectory(
-        prefix="learning-workflow-"
-    ) as directory:
-        staged = Path(directory) / "workspace"
-        staged.mkdir()
-
-        for name in ("content", "schemas", "scripts"):
-            source = root / name
-            if source.exists():
-                shutil.copytree(source, staged / name)
-
-        staged_result, staged_writes = plan_transaction(
-            staged,
-            transaction,
-        )
+def dry_run_prepared_plan(tooling_root: Path, content_workspace: Path, plan: dict[str, Any]) -> dict[str, Any]:
+    writes = planned_writes(content_workspace, plan)
+    with tempfile.TemporaryDirectory(prefix="learning-dry-run-") as directory:
+        staged_content = Path(directory) / "backend"
+        shutil.copytree(content_workspace / "content", staged_content / "content")
+        staged_writes = [
+            (staged_content / path.relative_to(content_workspace), payload)
+            for path, payload in writes
+        ]
         write_with_rollback(
             staged_writes,
-            lambda: run_repository_validator(staged),
+            lambda: run_repository_validator(tooling_root, staged_content),
         )
-        result["changes"] = staged_result["changes"]
-
-    result["operation"] = "dry_run"
-    result["result"] = "success"
-    result["next_actions"] = [
-        "review the dry-run",
-        "apply the reviewed transaction",
-    ]
+    result = result_for(plan, "dry_run")
+    result["next_actions"] = ["review the dry-run", "execute this exact prepared plan"]
     return result
 
 
-def apply_transaction(
-    root: Path,
-    transaction: dict[str, Any],
-) -> dict[str, Any]:
-    result, writes = plan_transaction(root, transaction)
+def apply_prepared_plan(tooling_root: Path, content_workspace: Path, plan: dict[str, Any]) -> dict[str, Any]:
+    writes = planned_writes(content_workspace, plan)
     write_with_rollback(
         writes,
-        lambda: run_repository_validator(root),
+        lambda: run_repository_validator(tooling_root, content_workspace),
     )
-    result["result"] = "success"
+    result = result_for(plan, "apply")
     result["next_actions"] = [
         "review the changed learning artifacts",
         "use them in a short study session",
         "record the unresolved point",
     ]
     return result
+
+# Backward-compatible Python API retained for existing callers and tests.
+def plan_transaction(root: Path, transaction: dict[str, Any]) -> tuple[dict[str, Any], list[tuple[Path, bytes]]]:
+    plan = prepare_transaction(root, root, transaction)
+    writes = planned_writes(root, plan)
+    result = result_for(plan, "prepare")
+    return result, writes
+
+
+def dry_run(root: Path, transaction: dict[str, Any]) -> dict[str, Any]:
+    plan = prepare_transaction(root, root, transaction)
+    return dry_run_prepared_plan(root, root, plan)
+
+
+def apply_transaction(root: Path, transaction: dict[str, Any]) -> dict[str, Any]:
+    plan = prepare_transaction(root, root, transaction)
+    return apply_prepared_plan(root, root, plan)

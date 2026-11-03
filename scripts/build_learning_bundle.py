@@ -65,7 +65,7 @@ def main():
         if o.get("prerequisite_ids"): indexes["prerequisites"][oid]=o["prerequisite_ids"]
         if o.get("kind")=="concept" and o.get("concept_type")=="contrast": indexes["contrasts"].append(oid)
 
-    now=datetime.datetime.now(datetime.timezone.utc).isoformat()
+    now=manifest["generated_at"]
     content_version=manifest.get("content_version","2026-11-01.1")
     bundle={"schemaVersion":"1.0","contentVersion":content_version,"generatedAt":now,"aliasMap":alias_map,
             "concepts":collections["concepts"],"competencies":collections["competencies"],

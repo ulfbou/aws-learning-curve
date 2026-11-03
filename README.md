@@ -55,15 +55,15 @@ The repository does not attempt to automate this entire loop at once. Developmen
 
 The existing object kinds represent learning tools:
 
-- `concept` â€” a mental model, distinction, process, principle, or mechanism;
-- `misconception` â€” a learning trap and its correction;
-- `question` â€” a recall, explanation, diagnosis, or reflection activity;
-- `scenario` â€” an application and reasoning activity;
-- `procedure` â€” a repeatable decision or troubleshooting process;
-- `competency` â€” an observable learning objective;
-- `learning_unit` â€” a structured learning sequence;
-- `source` â€” registered learning input;
-- `generation_run` â€” a record of a generation operation.
+- `concept` — a mental model, distinction, process, principle, or mechanism;
+- `misconception` — a learning trap and its correction;
+- `question` — a recall, explanation, diagnosis, or reflection activity;
+- `scenario` — an application and reasoning activity;
+- `procedure` — a repeatable decision or troubleshooting process;
+- `competency` — an observable learning objective;
+- `learning_unit` — a structured learning sequence;
+- `source` — registered learning input;
+- `generation_run` — a record of a generation operation.
 
 Existing kinds should be reused before new kinds are introduced.
 
@@ -205,6 +205,31 @@ private learner state
 excluded from public release artifacts
 ```
 
+## Repository ownership for bounded learning
+
+The bounded workflow preserves two explicit roots:
+
+- the frontend checkout is the tooling root and owns `scripts/`, `schemas/`,
+  tests, and CI/CD policy;
+- the backend worktree is the content workspace and owns canonical
+  `content/**`.
+
+The tooling root is derived from `scripts/content_workflow.py`. The backend
+worktree is supplied through `--content-workspace`.
+
+The workflow boundary is:
+
+```text
+query
+  -> candidate transaction
+  -> immutable prepared plan
+  -> dry-run prepared plan
+  -> execute the same prepared plan
+```
+
+Dry-run and execution must therefore use the same prepared timestamp, content
+hashes, paths, and serialized output.
+
 ## Current development direction
 
 The next runtime increment is intentionally narrow:
@@ -249,60 +274,110 @@ The current direction does not commit to embeddings, semantic similarity, graph 
 
 ## Local verification
 
-The normal environment is Windows 10 Pro with Git Bash and native Windows Python.
+The frontend checkout does not contain canonical authored content. Local
+release verification therefore requires both worktrees:
+
+```text
+aws-learning-curve-frontend/
+    frontend code, schemas, tooling, tests, and CI/CD policy
+
+aws-learning-curve-backend/
+    canonical content/**
+```
+
+Install frontend dependencies from the frontend worktree:
 
 ```bash
 py -m pip install --requirement requirements.txt
 npm ci
-py scripts/validate_content.py
-py scripts/build_learning_bundle.py
-npm run build:css
-node --check public/app.js
-py scripts/verify_pages.py
-py -m http.server 8000 --directory public
 ```
 
-Then open:
+Run the bounded-workflow tests:
 
-```text
-http://localhost:8000/
+```bash
+py -X utf8 -m unittest -v \
+  tests.test_learning_workflow_conflicts \
+  tests.test_learning_workflow_e2e
 ```
+
+Run the same verified release transaction used by CI:
+
+```bash
+py -X utf8 scripts/release.py \
+  --backend ../aws-learning-curve-backend
+```
+
+The release command combines the frontend and backend worktrees in an isolated
+workspace, validates canonical content, generates browser data, builds the
+frontend, verifies the complete Pages artifact, and promotes the result only
+after every step succeeds.
+
+For explicit CI-style paths and output:
+
+```bash
+py -X utf8 scripts/release.py \
+  --ci \
+  --frontend . \
+  --backend ../aws-learning-curve-backend \
+  --output .dx/release
+```
+
+Do not run `validate_content.py` or `build_learning_bundle.py` against the
+frontend checkout alone. Those tools require canonical backend content and are
+orchestrated through `release.py`.
+
+### Operational release boundary
+
+Do not run `validate_content.py` or `build_learning_bundle.py` against the
+frontend checkout alone. Those tools require canonical content from the
+backend worktree and are orchestrated through `scripts/release.py`.
+
+Use:
+
+```bash
+py -X utf8 scripts/release.py \
+  --backend ../aws-learning-curve-backend
+```
+
+The release transaction combines the frontend tooling root with the backend
+content workspace before validation, bundle generation, frontend build, and
+artifact verification.
 
 ## GitHub Pages deployment
 
-The workflow in `.github/workflows/deploy-pages.yml` runs on every push to `master` and may also be started manually.
-
-It:
-
-1. checks out the repository;
-2. installs Python dependencies;
-3. installs frontend dependencies;
-4. validates authored YAML content;
-5. builds the public JSON bundle and bundle manifest;
-6. builds production CSS;
-7. checks browser JavaScript syntax;
-8. verifies the complete `public/` artifact;
-9. uploads and deploys the GitHub Pages artifact.
-
-In repository settings, select:
+The GitHub Pages workflow checks out both repository roots:
 
 ```text
-Settings
-    ->
-Pages
-    ->
-Build and deployment
-    ->
-Source: GitHub Actions
+master
+    -> frontend code, schemas, tooling, tests, and CI/CD policy
+
+backend
+    -> canonical content/**
 ```
 
-The expected project site is:
+It then invokes the same transactional release implemented by
+`scripts/release.py`.
 
-```text
-https://ulfbou.github.io/aws-learning-curve/
-```
+The transaction:
 
-Browser asset and data paths remain relative to the deployed Pages root.
+1. identifies the exact frontend and backend revisions;
+2. assembles both roots in an isolated workspace;
+3. validates canonical backend content with frontend-owned schemas and tooling;
+4. generates public browser data;
+5. builds frontend assets;
+6. verifies the complete Pages artifact;
+7. records the release manifest;
+8. promotes the artifact only after every step succeeds.
+
+Pull requests run the complete transaction and retain the verified candidate as
+workflow evidence without publishing it. A successful push to `master`
+publishes the exact artifact produced by the verified transaction.
+
+Generated `public/data/**` remains release output. It is not canonical authored
+content and must not replace the backend ownership boundary.
+
+In repository settings, GitHub Pages uses GitHub Actions as the deployment
+source.
 
 ## Explicit non-goals
 
