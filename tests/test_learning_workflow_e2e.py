@@ -67,6 +67,8 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(completed.returncode, expected, msg=f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}")
         if completed.stdout.strip():
             return json.loads(completed.stdout)
+        if completed.stderr.strip():
+            return json.loads(completed.stderr)
         output = Path(args[args.index("-o") + 1])
         return json.loads(output.read_text(encoding="utf-8"))
 
