@@ -238,6 +238,10 @@ class ChatTaskTests(unittest.TestCase):
             text,
         )
         self.assertIn(
+            "`provenance.transformation.run_id`",
+            text,
+        )
+        self.assertIn(
             "only stdout payload",
             text,
         )

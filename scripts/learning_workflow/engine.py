@@ -236,12 +236,53 @@ def target_path(content_workspace: Path, relative: str) -> Path:
     return path
 
 
-def enrich(operation: dict[str, Any], current: Record | None, prepared_at: str) -> dict[str, Any]:
+def transaction_for_run_id(transaction: dict[str, Any]) -> dict[str, Any]:
+    """Return the semantic transaction without any AI-supplied run identifier."""
+    cleaned = copy.deepcopy(transaction)
+    for operation in cleaned.get("operations", []):
+        content = operation.get("content")
+        if not isinstance(content, dict):
+            continue
+        provenance = content.get("provenance")
+        if not isinstance(provenance, dict):
+            continue
+        transformation = provenance.get("transformation")
+        if isinstance(transformation, dict):
+            transformation.pop("run_id", None)
+    return cleaned
+
+
+def generation_run_id(transaction: dict[str, Any]) -> str:
+    digest = sha256_bytes(
+        canonical_json(transaction_for_run_id(transaction)).encode("utf-8")
+    )
+    return f"generation.{digest[:16]}"
+
+
+def assign_run_id(proposed: dict[str, Any], run_id: str) -> None:
+    provenance = proposed.setdefault("provenance", {})
+    if not isinstance(provenance, dict):
+        raise WorkflowError("provenance must be an object")
+    transformation = provenance.setdefault("transformation", {})
+    if not isinstance(transformation, dict):
+        raise WorkflowError("provenance.transformation must be an object")
+    transformation.setdefault("method", "llm_extraction")
+    transformation.setdefault("fidelity", "generated")
+    transformation["run_id"] = run_id
+
+
+def enrich(
+    operation: dict[str, Any],
+    current: Record | None,
+    prepared_at: str,
+    run_id: str,
+) -> dict[str, Any]:
     proposed = copy.deepcopy(operation["content"])
     proposed["id"] = operation["id"]
     proposed["kind"] = operation["kind"]
     for field in SYSTEM_FIELDS:
         proposed.pop(field, None)
+    assign_run_id(proposed, run_id)
     if current is None:
         proposed["revision"] = 1
         proposed["created_at"] = prepared_at
@@ -253,6 +294,28 @@ def enrich(operation: dict[str, Any], current: Record | None, prepared_at: str) 
     return proposed
 
 
+def prepared_operation(
+    obj: dict[str, Any],
+    action: str,
+    expected_file_sha256: str | None,
+) -> dict[str, Any]:
+    payload = yaml.safe_dump(
+        obj,
+        allow_unicode=True,
+        sort_keys=False,
+    ).encode("utf-8")
+    return {
+        "action": action,
+        "id": obj["id"],
+        "kind": obj["kind"],
+        "path": relative_target(obj).as_posix(),
+        "expected_file_sha256": expected_file_sha256,
+        "payload_sha256": sha256_bytes(payload),
+        "content_hash": semantic_hash(obj),
+        "payload_base64": base64.b64encode(payload).decode("ascii"),
+    }
+
+
 def prepare_transaction(
     tooling_root: Path,
     content_workspace: Path,
@@ -262,6 +325,10 @@ def prepare_transaction(
     validate_transaction(tooling_root, transaction)
     records = load_repository(content_workspace)
     timestamp = prepared_at or utc_now()
+    run_id = generation_run_id(transaction)
+    if run_id in records:
+        raise WorkflowError(f"generation run already exists: {run_id}")
+
     operations: list[dict[str, Any]] = []
     changes = {"created": [], "updated": [], "unchanged": []}
     seen: set[str] = set()
@@ -290,28 +357,50 @@ def prepare_transaction(
             if operation["kind"] != current.kind:
                 raise WorkflowError(f"kind cannot change for {object_id}")
 
-        enriched = enrich(operation, current, timestamp)
+        enriched = enrich(operation, current, timestamp, run_id)
         relative = relative_target(enriched).as_posix()
         if current is not None and (content_workspace / relative).resolve() != current.path.resolve():
-            raise WorkflowError(f"derived path differs from current repository path for {object_id}")
-        payload = yaml.safe_dump(enriched, allow_unicode=True, sort_keys=False).encode("utf-8")
-        operations.append({
-            "action": action,
-            "id": object_id,
-            "kind": operation["kind"],
-            "path": relative,
-            "expected_file_sha256": current.file_sha256 if current else None,
-            "payload_sha256": sha256_bytes(payload),
-            "content_hash": enriched["content_hash"],
-            "payload_base64": base64.b64encode(payload).decode("ascii"),
-        })
+            raise WorkflowError(
+                f"derived path differs from current repository path for {object_id}"
+            )
+        operations.append(
+            prepared_operation(
+                enriched,
+                action,
+                current.file_sha256 if current else None,
+            )
+        )
         changes["created" if action == "create" else "updated"].append(object_id)
+
+    run_inputs: list[dict[str, Any]] = [
+        {"learning_goal": transaction["learning_goal"]}
+    ]
+    if transaction.get("context_created_from"):
+        run_inputs[0]["context_created_from"] = transaction["context_created_from"]
+    generation_run = {
+        "schema_version": "1.0",
+        "id": run_id,
+        "kind": "generation_run",
+        "created_at": timestamp,
+        "generator": {
+            "type": "chat_ai",
+            "model": "unspecified",
+            "prompt_version": "bounded-learning-v1",
+        },
+        "operation": "incremental_extract",
+        "inputs": run_inputs,
+        "outputs": copy.deepcopy(changes),
+        "unresolved": [],
+        "warnings": [],
+    }
+    operations.append(prepared_operation(generation_run, "create", None))
 
     plan = {
         "schema_version": "1.0",
         "plan_type": "prepared_learning_transaction",
         "prepared_at": timestamp,
         "learning_goal": transaction["learning_goal"],
+        "generation_run_id": run_id,
         "changes": changes,
         "operations": operations,
     }
@@ -322,7 +411,7 @@ def prepare_transaction(
 def validate_prepared_plan(plan: dict[str, Any]) -> None:
     required = {
         "schema_version", "plan_type", "prepared_at", "learning_goal",
-        "changes", "operations", "plan_sha256",
+        "generation_run_id", "changes", "operations", "plan_sha256",
     }
     if set(plan) != required or plan.get("schema_version") != "1.0" or plan.get("plan_type") != "prepared_learning_transaction":
         raise WorkflowError("invalid prepared plan envelope")
@@ -415,6 +504,7 @@ def result_for(plan: dict[str, Any], operation: str) -> dict[str, Any]:
         "prepared_at": plan["prepared_at"],
         "plan_sha256": plan["plan_sha256"],
         "learning_goal": plan["learning_goal"],
+        "generation_run_id": plan["generation_run_id"],
         "changes": plan["changes"],
         "planned_outputs": [
             {

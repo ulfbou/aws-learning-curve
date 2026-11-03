@@ -29,6 +29,7 @@ SYSTEM_OWNED_FIELDS = (
     "prepared_at",
     "plan_sha256",
     "payload_sha256",
+    "provenance.transformation.run_id",
 )
 
 

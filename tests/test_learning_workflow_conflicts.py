@@ -19,6 +19,7 @@ from learning_workflow.engine import (  # noqa: E402
     WorkflowError,
     apply_transaction,
     plan_transaction,
+    planned_writes,
     prepare_transaction,
 )
 
@@ -230,6 +231,13 @@ class ConflictHandlingTests(unittest.TestCase):
             self.object_path.read_bytes(),
             self.original_bytes,
         )
+        generation_runs = self.root / "content" / "generation-runs"
+        self.assertEqual(
+            list(generation_runs.glob("*.yaml"))
+            if generation_runs.exists()
+            else [],
+            [],
+        )
 
     def test_successful_plan_does_not_mutate_repository(
         self,
@@ -243,7 +251,11 @@ class ConflictHandlingTests(unittest.TestCase):
             result["changes"]["updated"],
             [OBJECT_ID],
         )
-        self.assertEqual(len(writes), 1)
+        self.assertEqual(len(writes), 2)
+        self.assertEqual(
+            result["generation_run_id"],
+            writes[1][0].stem,
+        )
         self.assertEqual(
             self.object_path.read_bytes(),
             self.original_bytes,
@@ -281,6 +293,77 @@ class ConflictHandlingTests(unittest.TestCase):
             second["plan_sha256"],
         )
 
+
+    def test_python_owns_matching_generation_run_metadata(self) -> None:
+        candidate = update_transaction()
+        candidate["operations"][0]["content"]["provenance"][
+            "transformation"
+        ]["run_id"] = "generation.ai-selected"
+
+        first = prepare_transaction(
+            self.root,
+            self.root,
+            candidate,
+            prepared_at="2026-11-03T08:00:00+00:00",
+        )
+        second = prepare_transaction(
+            self.root,
+            self.root,
+            update_transaction(),
+            prepared_at="2026-11-03T09:00:00+00:00",
+        )
+
+        self.assertEqual(
+            first["generation_run_id"],
+            second["generation_run_id"],
+        )
+        self.assertNotEqual(
+            first["generation_run_id"],
+            "generation.ai-selected",
+        )
+
+        object_payload = yaml.safe_load(
+            __import__("base64").b64decode(
+                first["operations"][0]["payload_base64"]
+            ).decode("utf-8")
+        )
+        run_payload = yaml.safe_load(
+            __import__("base64").b64decode(
+                first["operations"][1]["payload_base64"]
+            ).decode("utf-8")
+        )
+
+        self.assertEqual(
+            object_payload["provenance"]["transformation"]["run_id"],
+            first["generation_run_id"],
+        )
+        self.assertEqual(run_payload["id"], first["generation_run_id"])
+        self.assertEqual(run_payload["outputs"], first["changes"])
+        self.assertEqual(first["changes"]["updated"], [OBJECT_ID])
+        self.assertEqual(first["changes"]["created"], [])
+        self.assertEqual(first["changes"]["unchanged"], [])
+
+    def test_generation_run_target_participates_in_stale_check(self) -> None:
+        plan = prepare_transaction(
+            self.root,
+            self.root,
+            update_transaction(),
+            prepared_at="2026-11-03T08:00:00+00:00",
+        )
+        run_path = (
+            self.root
+            / "content"
+            / "generation-runs"
+            / f"{plan['generation_run_id']}.yaml"
+        )
+        run_path.parent.mkdir(parents=True)
+        run_path.write_text("unexpected", encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            WorkflowError,
+            "stale prepared plan for generation",
+        ):
+            planned_writes(self.root, plan)
 
 
 if __name__ == "__main__":

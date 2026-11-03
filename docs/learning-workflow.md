@@ -49,7 +49,7 @@ TRANSACTION
 
 The AI replaces the empty operations array with one complete schema-valid candidate transaction. No intermediate transaction file is required. Successful machine-readable JSON is the only stdout payload. INFO messages and failure JSON use stderr, and failures return a nonzero exit code.
 
-Python validates the existing transaction schema, derives repository paths, assigns system fields, creates `prepared_at` once, and emits a hash-protected plan containing the exact UTF-8 payload bytes. Retain this artifact. Do not regenerate it between dry-run and execution.
+Python validates the existing transaction schema, derives repository paths, assigns system fields, creates `prepared_at` once, and emits a hash-protected plan containing the exact UTF-8 payload bytes. Python also derives a deterministic generation-run ID from the semantic transaction, overwrites any AI-supplied `provenance.transformation.run_id`, and adds a matching `generation_run` payload whose outputs list the created, updated, and unchanged learning-object IDs. Retain this artifact. Do not regenerate it between dry-run and execution.
 
 ## Dry-run the prepared plan
 
