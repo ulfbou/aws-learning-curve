@@ -8,6 +8,42 @@ The stable workflow is:
 chat task -> AI candidate transaction -> prepare immutable plan -> dry-run plan -> human review -> execute same plan
 ```
 
+## Supported implementation
+
+Increment 1 has one supported bounded-learning workflow:
+
+```text
+scripts/content_workflow.py
+scripts/learning_workflow/engine.py
+schemas/learning-transaction.schema.json
+```
+
+The installed command remains:
+
+```text
+learning-workflow = "scripts.content_workflow:main"
+```
+
+The supported command surface is:
+
+```text
+query
+chat-task
+prepare
+apply
+```
+
+The earlier packet-oriented `scripts/authoring.py` workflow has been retired.
+It is not a supported source-ingestion, transaction, or application path.
+
+This consolidation does not introduce a replacement source-ingestion
+workflow, automatic source registration, new learning capability, or new
+private-state infrastructure. Any future source-ingestion increment requires
+its own bounded design based on an observed learning need.
+
+Persistent interaction artifacts belong under `.dx/`. The workflow must not
+introduce persistent `.authoring/` or `.private/` repository infrastructure.
+
 ## Generate the chat-ready IAM task
 
 From the frontend worktree:
