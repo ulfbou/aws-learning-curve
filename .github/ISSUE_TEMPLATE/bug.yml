@@ -1,0 +1,53 @@
+name: Bug
+description: Report reproducible incorrect behavior or a violated invariant
+title: "fix: "
+labels:
+  - type:fix
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: State exactly what occurred, including the failed stage and complete error when available.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: State the contract, invariant, or accepted behavior that should hold.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest complete sequence that reproduces the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Attach or reference one complete diagnostic artifact, relevant logs, hashes, or repository state.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and safety boundary
+      description: Identify corruption, privacy, publication, grounding, or learner-facing risk.
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: Regression validation
+      description: Define the test that must fail before the fix and pass afterward.
+    validations:
+      required: true

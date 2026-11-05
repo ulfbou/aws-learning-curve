@@ -1,0 +1,46 @@
+name: Research or decision
+description: Run a bounded investigation that ends in an explicit decision
+title: "research: "
+labels:
+  - type:research
+  - status:needs-decision
+body:
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision required
+      description: State the exact decision this investigation must enable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Current evidence
+      description: Separate verified facts, accepted decisions, assumptions, and unknowns.
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: Options and trade-offs
+      description: List only viable options and their material consequences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Required output
+      description: Name the decision record, prototype, measurement, or recommendation to produce.
+    validations:
+      required: true
+
+  - type: textarea
+    id: stop
+    attributes:
+      label: Stop condition
+      description: Define when enough evidence exists and what is explicitly out of scope.
+    validations:
+      required: true

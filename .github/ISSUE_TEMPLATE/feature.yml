@@ -1,0 +1,69 @@
+name: Feature
+description: Propose a bounded, testable product or system capability
+title: "feat: "
+labels:
+  - type:feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the smallest complete change. Do not combine neighboring roadmap work.
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective and learner value
+      description: State the concrete outcome and why it improves learning.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope
+      description: List the behavior and artifacts included in this issue.
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: Name adjacent work deliberately excluded.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Provide observable and testable completion criteria.
+      placeholder: |
+        - [ ] First observable criterion
+        - [ ] Second observable criterion
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Grounding and evidence
+      description: Identify registered source fragments, repository evidence, or explain why grounding is not applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: List the exact tests, commands, or review evidence required.
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Architectural constraints
+      description: Record accepted ADRs, privacy boundaries, schemas, and semantic non-regression requirements.
+    validations:
+      required: true
