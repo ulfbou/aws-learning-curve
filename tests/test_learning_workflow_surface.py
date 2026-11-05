@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 
 SUPPORTED_COMMANDS = {
+    "register-source",
     "query",
     "chat-task",
     "prepare",

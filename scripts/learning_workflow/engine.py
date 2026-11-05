@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -196,6 +197,531 @@ def build_context(content_workspace: Path, request: dict[str, Any]) -> dict[str,
     }
 
 
+
+def normalize_source_text(raw: bytes) -> str:
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise WorkflowError(
+            f"source is not valid UTF-8: {exc}"
+        ) from exc
+    text = (
+        text.replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .rstrip("\n")
+    )
+    if not text.strip():
+        raise WorkflowError(
+            "source content is empty after normalization"
+        )
+    return text
+
+
+def normalized_fragment_text(exact: str) -> str:
+    return "\n".join(
+        line.rstrip()
+        for line in exact.split("\n")
+    ).strip()
+
+
+def make_fragment(
+    source_id: str,
+    language: str,
+    text: str,
+    start: int,
+    end: int,
+    number: int,
+    heading: str | None = None,
+) -> dict[str, Any]:
+    exact = text[start:end]
+    normalized = normalized_fragment_text(exact)
+    fragment: dict[str, Any] = {
+        "id": f"{source_id}.fragment.{number:03d}",
+        "language": language,
+        "content_fingerprint": sha256_bytes(
+            normalized.encode("utf-8")
+        )[:32],
+        "locator": {
+            "section": heading,
+            "start_offset": start,
+            "end_offset": end,
+        },
+        "exact_text": exact,
+        "normalized_text": normalized,
+        "noise_removed": [],
+    }
+    if heading is not None:
+        fragment["heading"] = heading
+    return fragment
+
+
+def text_fragments(
+    source_id: str,
+    language: str,
+    text: str,
+) -> list[dict[str, Any]]:
+    fragments: list[dict[str, Any]] = []
+    pattern = r"(?s)(?:^|\n{2,})(.*?)(?=\n{2,}|$)"
+
+    for match in re.finditer(pattern, text):
+        if not match.group(1).strip():
+            continue
+        fragments.append(
+            make_fragment(
+                source_id,
+                language,
+                text,
+                match.start(1),
+                match.end(1),
+                len(fragments) + 1,
+            )
+        )
+
+    return fragments
+
+
+def markdown_fragments(
+    source_id: str,
+    language: str,
+    text: str,
+) -> list[dict[str, Any]]:
+    pattern = (
+        r"(?m)^(#{1,6})[ \t]+"
+        r"(.+?)[ \t]*#*[ \t]*(?=\n|$)"
+    )
+    headings = list(re.finditer(pattern, text))
+
+    if not headings:
+        return text_fragments(
+            source_id,
+            language,
+            text,
+        )
+
+    fragments: list[dict[str, Any]] = []
+    first_heading = headings[0].start()
+
+    if text[:first_heading].strip():
+        end = first_heading
+        while end and text[end - 1] == "\n":
+            end -= 1
+        fragments.append(
+            make_fragment(
+                source_id,
+                language,
+                text,
+                0,
+                end,
+                len(fragments) + 1,
+            )
+        )
+
+    for index, match in enumerate(headings):
+        start = match.start()
+        end = (
+            headings[index + 1].start()
+            if index + 1 < len(headings)
+            else len(text)
+        )
+        while end > start and text[end - 1] == "\n":
+            end -= 1
+        fragments.append(
+            make_fragment(
+                source_id,
+                language,
+                text,
+                start,
+                end,
+                len(fragments) + 1,
+                match.group(2).strip(),
+            )
+        )
+
+    return fragments
+
+
+def source_fragments(
+    source_id: str,
+    language: str,
+    text: str,
+    extension: str,
+) -> list[dict[str, Any]]:
+    fragments = (
+        markdown_fragments(
+            source_id,
+            language,
+            text,
+        )
+        if extension == ".md"
+        else text_fragments(
+            source_id,
+            language,
+            text,
+        )
+    )
+    if not fragments:
+        raise WorkflowError(
+            "source content produced no fragments"
+        )
+    return fragments
+
+
+def build_source_record(
+    source_path: Path,
+    source_id: str,
+    title: str,
+    source_type: str,
+    language: str,
+    captured_at: str | None = None,
+) -> dict[str, Any]:
+    extension = source_path.suffix.lower()
+    if extension not in {".txt", ".md"}:
+        raise WorkflowError(
+            "source extension must be .txt or .md"
+        )
+    if not ID_RE.match(source_id):
+        raise WorkflowError(
+            f"unsafe semantic ID: {source_id!r}"
+        )
+
+    try:
+        raw = source_path.read_bytes()
+        source_stat = source_path.stat()
+    except OSError as exc:
+        raise WorkflowError(
+            f"cannot read source: {source_path}: {exc}"
+        ) from exc
+
+    timestamp = captured_at or datetime.fromtimestamp(
+        source_stat.st_mtime,
+        timezone.utc,
+    ).isoformat()
+
+    text = normalize_source_text(raw)
+    origin_hash = sha256_bytes(
+        text.encode("utf-8")
+    )
+
+    record = {
+        "schema_version": "1.0",
+        "id": source_id,
+        "kind": "source",
+        "status": "candidate",
+        "title": title,
+        "source_type": source_type,
+        "language": language,
+        "origin": {
+            "path": source_path.resolve().as_posix(),
+            "external_url": None,
+            "captured_at": timestamp,
+            "content_hash": origin_hash,
+        },
+        "fragments": source_fragments(
+            source_id,
+            language,
+            text,
+            extension,
+        ),
+        "relationships": [],
+        "revision": 1,
+        "created_at": timestamp,
+        "updated_at": timestamp,
+        "aliases": [],
+    }
+    record["content_hash"] = semantic_hash(record)
+    return record
+
+
+def register_source(
+    content_workspace: Path,
+    source_path: Path,
+    source_id: str,
+    title: str,
+    source_type: str,
+    language: str,
+    execute: bool = False,
+    captured_at: str | None = None,
+) -> dict[str, Any]:
+    records = load_repository(content_workspace)
+    proposed = build_source_record(
+        source_path,
+        source_id,
+        title,
+        source_type,
+        language,
+        captured_at,
+    )
+    target = (
+        content_workspace
+        / relative_target(proposed)
+    )
+    current = records.get(source_id)
+
+    if current is not None:
+        if current.kind != "source":
+            raise WorkflowError(
+                "source ID belongs to another kind: "
+                f"{source_id}"
+            )
+
+        current_hash = (
+            current.data.get("origin", {})
+            .get("content_hash")
+        )
+        proposed_hash = (
+            proposed["origin"]["content_hash"]
+        )
+
+        if current_hash != proposed_hash:
+            raise WorkflowError(
+                "source ID already exists with "
+                "different normalized content: "
+                f"{source_id}"
+            )
+
+        return {
+            "schema_version": "1.0",
+            "operation": "register_source",
+            "result": "success",
+            "execute_requested": execute,
+            "executed": False,
+            "status": "unchanged",
+            "source_id": source_id,
+            "path": current.path.relative_to(
+                content_workspace
+            ).as_posix(),
+            "origin_content_hash": current_hash,
+            "source_content_hash": (
+                current.data.get("content_hash")
+            ),
+            "fragment_count": len(
+                current.data.get("fragments", [])
+            ),
+            "generation_runs_created": 0,
+        }
+
+    payload = yaml.safe_dump(
+        proposed,
+        allow_unicode=True,
+        sort_keys=False,
+    ).encode("utf-8")
+
+    if execute:
+        target.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+        temporary = target.with_name(
+            target.name + ".tmp"
+        )
+
+        try:
+            temporary.write_bytes(payload)
+            temporary.replace(target)
+
+            run_repository_validator(
+                Path(__file__).resolve().parents[2],
+                content_workspace,
+            )
+        except Exception:
+            temporary.unlink(missing_ok=True)
+            target.unlink(missing_ok=True)
+            raise
+
+    return {
+        "schema_version": "1.0",
+        "operation": "register_source",
+        "result": "success",
+        "execute_requested": execute,
+        "executed": execute,
+        "status": (
+            "created"
+            if execute
+            else "would_create"
+        ),
+        "source_id": source_id,
+        "path": relative_target(
+            proposed
+        ).as_posix(),
+        "origin_content_hash": (
+            proposed["origin"]["content_hash"]
+        ),
+        "source_content_hash": (
+            proposed["content_hash"]
+        ),
+        "payload_sha256": sha256_bytes(payload),
+        "fragment_count": len(
+            proposed["fragments"]
+        ),
+        "generation_runs_created": 0,
+    }
+
+def duplicates(values: list[Any]) -> set[Any]:
+    seen: set[Any] = set()
+    repeated: set[Any] = set()
+
+    for value in values:
+        if value in seen:
+            repeated.add(value)
+        seen.add(value)
+
+    return repeated
+
+
+def validate_grounding(
+    records: dict[str, Record],
+    proposed: dict[str, Any],
+) -> None:
+    provenance = proposed.get("provenance")
+    grounding = proposed.get("grounding")
+
+    if not isinstance(provenance, dict):
+        return
+
+    verification = (
+        provenance.get("verification") or {}
+    )
+    source_grounded = bool(
+        verification.get("source_grounded")
+    )
+    sources = provenance.get("sources") or []
+
+    if not isinstance(sources, list):
+        raise WorkflowError(
+            "provenance.sources must be an array"
+        )
+
+    pairs = [
+        (
+            item.get("source_id"),
+            item.get("fragment_id"),
+        )
+        for item in sources
+        if isinstance(item, dict)
+    ]
+
+    if (
+        len(pairs) != len(sources)
+        or any(
+            not source_id or not fragment_id
+            for source_id, fragment_id in pairs
+        )
+    ):
+        raise WorkflowError(
+            "provenance contains an invalid "
+            "source citation"
+        )
+
+    if duplicates(pairs):
+        raise WorkflowError(
+            "provenance contains duplicate "
+            "source citations"
+        )
+
+    if not isinstance(grounding, dict):
+        if pairs or source_grounded:
+            raise WorkflowError(
+                "source-grounded provenance "
+                "requires grounding"
+            )
+        return
+
+    source_ids = grounding.get("source_ids") or []
+    fragment_ids = (
+        grounding.get("fragment_ids") or []
+    )
+
+    if (
+        not isinstance(source_ids, list)
+        or not isinstance(fragment_ids, list)
+    ):
+        raise WorkflowError(
+            "grounding source_ids and "
+            "fragment_ids must be arrays"
+        )
+
+    if duplicates(source_ids):
+        raise WorkflowError(
+            "grounding contains duplicate "
+            "source IDs"
+        )
+
+    if duplicates(fragment_ids):
+        raise WorkflowError(
+            "grounding contains duplicate "
+            "fragment IDs"
+        )
+
+    if (
+        {source_id for source_id, _ in pairs}
+        != set(source_ids)
+        or {
+            fragment_id
+            for _, fragment_id in pairs
+        }
+        != set(fragment_ids)
+    ):
+        raise WorkflowError(
+            "provenance and grounding "
+            "references disagree"
+        )
+
+    if source_grounded and not pairs:
+        raise WorkflowError(
+            "source_grounded requires "
+            "resolvable provenance"
+        )
+
+    for source_id, fragment_id in pairs:
+        record = records.get(str(source_id))
+
+        if (
+            record is None
+            or record.kind != "source"
+        ):
+            raise WorkflowError(
+                "grounding source is not "
+                f"registered: {source_id}"
+            )
+
+        fragments = {
+            item.get("id"): item
+            for item in record.data.get(
+                "fragments",
+                [],
+            )
+            if isinstance(item, dict)
+        }
+        fragment = fragments.get(fragment_id)
+
+        if fragment is None:
+            raise WorkflowError(
+                "grounding fragment is not "
+                f"registered for {source_id}: "
+                f"{fragment_id}"
+            )
+
+        expected = sha256_bytes(
+            str(
+                fragment.get(
+                    "normalized_text",
+                    "",
+                )
+            ).encode("utf-8")
+        )[:32]
+
+        if (
+            fragment.get(
+                "content_fingerprint"
+            )
+            != expected
+        ):
+            raise WorkflowError(
+                "registered fragment fingerprint "
+                f"mismatch: {fragment_id}"
+            )
+
+
 def load_transaction_schema(tooling_root: Path) -> dict[str, Any]:
     path = tooling_root / "schemas" / "learning-transaction.schema.json"
     if not path.is_file():
@@ -324,6 +850,10 @@ def prepare_transaction(
 ) -> dict[str, Any]:
     validate_transaction(tooling_root, transaction)
     records = load_repository(content_workspace)
+    for operation in transaction["operations"]:
+        content = operation.get("content")
+        if isinstance(content, dict):
+            validate_grounding(records, content)
     timestamp = prepared_at or utc_now()
     run_id = generation_run_id(transaction)
     if run_id in records:
