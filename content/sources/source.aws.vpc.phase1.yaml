@@ -1,0 +1,271 @@
+schema_version: '1.0'
+id: source.aws.vpc.phase1
+kind: source
+status: candidate
+title: Amazon VPC routing and reachability
+source_type: own_notes
+language: en-US
+origin:
+  path: F:/dev/.dx/phase1-vpc-source.md
+  external_url: null
+  captured_at: '2026-11-05T13:38:17.179918+00:00'
+  content_hash: 6dfff522abc37773d361c157b17ce705910346ab2ec9547928aeb94c01373d4e
+fragments:
+- id: source.aws.vpc.phase1.fragment.001
+  language: en-US
+  content_fingerprint: def625eef8378feb01cf4284e86c9ddf
+  locator:
+    section: 'Amazon VPC: routing, reachability, and filtering'
+    start_offset: 0
+    end_offset: 302
+  exact_text: '# Amazon VPC: routing, reachability, and filtering
+
+
+    An Amazon Virtual Private Cloud is a regional network boundary. A VPC contains
+    IP address ranges, subnets, route tables, gateways, and network-security controls.
+    These parts work together, but each answers a different question about network
+    behavior.'
+  normalized_text: '# Amazon VPC: routing, reachability, and filtering
+
+
+    An Amazon Virtual Private Cloud is a regional network boundary. A VPC contains
+    IP address ranges, subnets, route tables, gateways, and network-security controls.
+    These parts work together, but each answers a different question about network
+    behavior.'
+  noise_removed: []
+  heading: 'Amazon VPC: routing, reachability, and filtering'
+- id: source.aws.vpc.phase1.fragment.002
+  language: en-US
+  content_fingerprint: 08acbc2ecdfa625ff4475f7d5950bc2e
+  locator:
+    section: Subnets and route tables
+    start_offset: 304
+    end_offset: 1117
+  exact_text: '## Subnets and route tables
+
+
+    A subnet is a range of IP addresses inside one Availability Zone. Placing a workload
+    in a subnet does not by itself make that workload public or private.
+
+
+    Each subnet is associated with a route table. The route table determines where
+    traffic matching a destination is sent. A local route supports communication within
+    the VPC address range. Additional routes can direct traffic to an internet gateway,
+    a NAT gateway, a transit gateway, a virtual private gateway, or another supported
+    target.
+
+
+    A subnet is commonly described as public when its associated route table has a
+    route to an internet gateway. A subnet without that route is commonly described
+    as private. This classification describes the subnet''s routing configuration,
+    not the complete reachability of every workload in it.'
+  normalized_text: '## Subnets and route tables
+
+
+    A subnet is a range of IP addresses inside one Availability Zone. Placing a workload
+    in a subnet does not by itself make that workload public or private.
+
+
+    Each subnet is associated with a route table. The route table determines where
+    traffic matching a destination is sent. A local route supports communication within
+    the VPC address range. Additional routes can direct traffic to an internet gateway,
+    a NAT gateway, a transit gateway, a virtual private gateway, or another supported
+    target.
+
+
+    A subnet is commonly described as public when its associated route table has a
+    route to an internet gateway. A subnet without that route is commonly described
+    as private. This classification describes the subnet''s routing configuration,
+    not the complete reachability of every workload in it.'
+  noise_removed: []
+  heading: Subnets and route tables
+- id: source.aws.vpc.phase1.fragment.003
+  language: en-US
+  content_fingerprint: 840f7058768f35535b31b17497c83cd2
+  locator:
+    section: Internet gateways and public addressing
+    start_offset: 1119
+    end_offset: 1782
+  exact_text: '## Internet gateways and public addressing
+
+
+    An internet gateway is attached to a VPC and can serve as the target for internet-bound
+    routes. A route to an internet gateway is necessary for direct internet communication,
+    but the route alone is not sufficient.
+
+
+    For inbound or outbound IPv4 internet communication through an internet gateway,
+    a workload also needs a public IPv4 address or an Elastic IP address. Its security
+    group and network ACLs must permit the relevant traffic. The workload and operating
+    system must also listen for and respond to that traffic.
+
+
+    A workload can therefore be located in a public subnet and still be unreachable
+    from the internet.'
+  normalized_text: '## Internet gateways and public addressing
+
+
+    An internet gateway is attached to a VPC and can serve as the target for internet-bound
+    routes. A route to an internet gateway is necessary for direct internet communication,
+    but the route alone is not sufficient.
+
+
+    For inbound or outbound IPv4 internet communication through an internet gateway,
+    a workload also needs a public IPv4 address or an Elastic IP address. Its security
+    group and network ACLs must permit the relevant traffic. The workload and operating
+    system must also listen for and respond to that traffic.
+
+
+    A workload can therefore be located in a public subnet and still be unreachable
+    from the internet.'
+  noise_removed: []
+  heading: Internet gateways and public addressing
+- id: source.aws.vpc.phase1.fragment.004
+  language: en-US
+  content_fingerprint: bb02e5b439058952baec7ceb9d4d6140
+  locator:
+    section: NAT gateways and outbound access
+    start_offset: 1784
+    end_offset: 2388
+  exact_text: '## NAT gateways and outbound access
+
+
+    A NAT gateway allows workloads using private IPv4 addresses to initiate outbound
+    connections while preventing unsolicited inbound connections from being initiated
+    through that NAT gateway.
+
+
+    A public NAT gateway is created in a public subnet and uses an Elastic IP address.
+    Its subnet needs a route to an internet gateway. Private subnets can route selected
+    internet-bound traffic to the NAT gateway.
+
+
+    The NAT gateway does not make the private workload directly addressable from the
+    internet. It translates the outbound connection and the corresponding return traffic.'
+  normalized_text: '## NAT gateways and outbound access
+
+
+    A NAT gateway allows workloads using private IPv4 addresses to initiate outbound
+    connections while preventing unsolicited inbound connections from being initiated
+    through that NAT gateway.
+
+
+    A public NAT gateway is created in a public subnet and uses an Elastic IP address.
+    Its subnet needs a route to an internet gateway. Private subnets can route selected
+    internet-bound traffic to the NAT gateway.
+
+
+    The NAT gateway does not make the private workload directly addressable from the
+    internet. It translates the outbound connection and the corresponding return traffic.'
+  noise_removed: []
+  heading: NAT gateways and outbound access
+- id: source.aws.vpc.phase1.fragment.005
+  language: en-US
+  content_fingerprint: 949a9b991379345e59f4bc96fb94b9ca
+  locator:
+    section: Security groups and network ACLs
+    start_offset: 2390
+    end_offset: 3025
+  exact_text: '## Security groups and network ACLs
+
+
+    Security groups are stateful controls associated with network interfaces. If traffic
+    is allowed in one direction, corresponding response traffic is automatically allowed
+    by the stateful connection tracking.
+
+
+    Network ACLs are stateless controls applied at the subnet boundary. Rules are
+    evaluated separately for inbound and outbound traffic, so both directions must
+    permit the required flow.
+
+
+    Routing decides the next destination for traffic. Security groups and network
+    ACLs decide whether the traffic is permitted. These controls complement each other
+    and should not be treated as interchangeable.'
+  normalized_text: '## Security groups and network ACLs
+
+
+    Security groups are stateful controls associated with network interfaces. If traffic
+    is allowed in one direction, corresponding response traffic is automatically allowed
+    by the stateful connection tracking.
+
+
+    Network ACLs are stateless controls applied at the subnet boundary. Rules are
+    evaluated separately for inbound and outbound traffic, so both directions must
+    permit the required flow.
+
+
+    Routing decides the next destination for traffic. Security groups and network
+    ACLs decide whether the traffic is permitted. These controls complement each other
+    and should not be treated as interchangeable.'
+  noise_removed: []
+  heading: Security groups and network ACLs
+- id: source.aws.vpc.phase1.fragment.006
+  language: en-US
+  content_fingerprint: 020048b0bd6a6fcc904a5b443eba8104
+  locator:
+    section: Reasoning about reachability
+    start_offset: 3027
+    end_offset: 3838
+  exact_text: '## Reasoning about reachability
+
+
+    To reason about whether a connection can succeed, trace the complete path:
+
+
+    1. Confirm the source and destination addresses.
+
+    2. Inspect the route table associated with the source subnet.
+
+    3. Inspect the route table associated with the destination subnet when applicable.
+
+    4. Verify that required gateways or routing targets exist and are attached correctly.
+
+    5. Verify public addressing or NAT translation when internet communication is
+    involved.
+
+    6. Evaluate security-group rules.
+
+    7. Evaluate network-ACL rules in both directions.
+
+    8. Confirm that the workload, operating system, and application accept and return
+    the traffic.
+
+
+    A failure at any one of these layers can prevent the connection. Describing a
+    subnet as public or private is therefore only the beginning of the analysis.'
+  normalized_text: '## Reasoning about reachability
+
+
+    To reason about whether a connection can succeed, trace the complete path:
+
+
+    1. Confirm the source and destination addresses.
+
+    2. Inspect the route table associated with the source subnet.
+
+    3. Inspect the route table associated with the destination subnet when applicable.
+
+    4. Verify that required gateways or routing targets exist and are attached correctly.
+
+    5. Verify public addressing or NAT translation when internet communication is
+    involved.
+
+    6. Evaluate security-group rules.
+
+    7. Evaluate network-ACL rules in both directions.
+
+    8. Confirm that the workload, operating system, and application accept and return
+    the traffic.
+
+
+    A failure at any one of these layers can prevent the connection. Describing a
+    subnet as public or private is therefore only the beginning of the analysis.'
+  noise_removed: []
+  heading: Reasoning about reachability
+relationships: []
+revision: 1
+created_at: '2026-11-05T13:38:17.179918+00:00'
+updated_at: '2026-11-05T13:38:17.179918+00:00'
+aliases: []
+content_hash: ecdcbdbd5a000b8d9fd9063371da4bc34f40985c40ca58671765fd4fb5374a87

@@ -1,0 +1,99 @@
+schema_version: '1.0'
+status: candidate
+domain: aws-cloud
+concept_type: model
+labels:
+  en-US:
+    preferred: Public subnet reachability
+definition:
+  en-US: A public subnet provides a route toward an internet gateway, but workload
+    reachability still depends on public addressing, permitted security controls,
+    and application behavior across the complete traffic path.
+explanations:
+- language: en-US
+  text: Calling a subnet public describes its route-table association. It does not
+    prove that a particular workload can communicate with the internet. For direct
+    IPv4 internet communication, the workload also requires appropriate public addressing.
+    Security groups and network ACLs must permit the flow, and the operating system
+    and application must accept and return the traffic.
+key_points:
+- A subnet is commonly classified as public when its route table directs internet-bound
+  traffic to an internet gateway.
+- A route to an internet gateway is necessary for direct internet communication but
+  is not sufficient by itself.
+- The workload needs suitable public IPv4 addressing for direct IPv4 internet communication.
+- Security groups are stateful, while network ACLs are stateless and must permit the
+  required directions.
+- The workload, operating system, and application must listen for and return the traffic.
+- Reachability analysis must trace the complete path rather than infer connectivity
+  from the subnet label.
+examples:
+- language: en-US
+  text: An EC2 instance is placed in a subnet whose route table sends 0.0.0.0/0 to
+    an internet gateway. The instance has no public IPv4 address, so it cannot communicate
+    directly with the internet through that gateway.
+- language: en-US
+  text: An instance has a public IPv4 address and the subnet has an internet-gateway
+    route, but the security group does not permit the intended inbound connection.
+    The instance remains unreachable for that connection.
+non_examples:
+- A subnet is not proven private merely because one workload in it is unreachable.
+- A route-table entry does not override security-group, network-ACL, operating-system,
+  or application behavior.
+relationships: []
+confusion_signals:
+- Treating public subnet as equivalent to publicly reachable workload.
+- Checking the route table but not public addressing.
+- Treating security groups and network ACLs as interchangeable.
+- Ignoring the return path or the application listener.
+misconception_ids: []
+recommended_question_ids: []
+tags:
+- aws
+- vpc
+- subnet
+- routing
+- internet-gateway
+- security-group
+- network-acl
+- reachability
+provenance:
+  sources:
+  - source_id: source.aws.vpc.phase1
+    fragment_id: source.aws.vpc.phase1.fragment.002
+    relation: directly_supports
+  - source_id: source.aws.vpc.phase1
+    fragment_id: source.aws.vpc.phase1.fragment.003
+    relation: directly_supports
+  - source_id: source.aws.vpc.phase1
+    fragment_id: source.aws.vpc.phase1.fragment.005
+    relation: directly_supports
+  - source_id: source.aws.vpc.phase1
+    fragment_id: source.aws.vpc.phase1.fragment.006
+    relation: directly_supports
+  transformation:
+    method: llm_extraction
+    run_id: generation.35c5afe68204197b
+    fidelity: paraphrase
+  verification:
+    source_grounded: true
+    externally_verified: false
+    verified_at: null
+  unsupported_fields: []
+grounding:
+  source_ids:
+  - source.aws.vpc.phase1
+  fragment_ids:
+  - source.aws.vpc.phase1.fragment.002
+  - source.aws.vpc.phase1.fragment.003
+  - source.aws.vpc.phase1.fragment.005
+  - source.aws.vpc.phase1.fragment.006
+  concept_ids: []
+  unsupported_claims: []
+aliases: []
+id: concept.aws.vpc.public-subnet-reachability
+kind: concept
+revision: 1
+created_at: '2026-11-05T14:25:51.257611+00:00'
+updated_at: '2026-11-05T14:25:51.257611+00:00'
+content_hash: 6bd8ecaec4db1f314196271b5374e502a86ed101cb6d995b1e4a145cffa0e5a1
