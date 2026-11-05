@@ -58,6 +58,8 @@ jobs:
             tests.test_learning_workflow_conflicts \
             tests.test_learning_workflow_e2e \
             tests.test_learning_workflow_chat_task \
+            tests.test_learning_workflow_source_registration \
+            tests.test_learning_workflow_grounding \
             tests.test_learning_workflow_surface
 
       - name: Test public content boundary

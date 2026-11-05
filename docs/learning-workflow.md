@@ -139,3 +139,20 @@ learner-provided unresolved point:
 ```
 
 The unresolved point must come from the learner after short study use. Python and AI must not infer it as an authoritative fact.
+
+
+## Register a bounded source
+
+UTF-8 `.txt` and `.md` inputs are registered deterministically in the backend. The command is a dry-run unless `--execute` is supplied. Python normalizes CRLF and CR to LF, removes trailing newlines, derives the canonical `content/sources/<source-id>.yaml` path, fragments Markdown by heading-based sections and plain text by non-empty paragraphs, and owns offsets, hashes, fingerprints, timestamps, and revision fields. Registration creates no generation run.
+
+```bash
+py -X utf8 scripts/content_workflow.py \
+  --content-workspace ../aws-learning-curve-backend \
+  register-source .dx/vpc-notes.md \
+  --source-id source.aws.vpc.phase1 \
+  --title "Phase 1 VPC notes" \
+  --source-type course_notes \
+  --language en-US
+```
+
+Review the JSON result, then repeat with `--execute`. Re-registering identical normalized content is unchanged; reusing the source ID for different normalized content is rejected. Candidate transactions are checked before preparation so provenance pairs and grounding sets must agree and resolve to canonical registered source fragments with intact fingerprints. Registered source text remains excluded from the public bundle.

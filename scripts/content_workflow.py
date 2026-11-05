@@ -16,6 +16,7 @@ from learning_workflow.engine import (
     build_context,
     dry_run_prepared_plan,
     prepare_transaction,
+    register_source,
 )
 
 TOOLING_ROOT = Path(__file__).resolve().parents[1]
@@ -282,6 +283,15 @@ def parser() -> argparse.ArgumentParser:
             action="store_true",
         )
 
+    register = commands.add_parser("register-source", help="register a UTF-8 .txt or .md source")
+    register.add_argument("source", type=Path)
+    register.add_argument("--source-id", required=True)
+    register.add_argument("--title", required=True)
+    register.add_argument("--source-type", required=True, choices=("course_notes", "aws_docs", "book", "video", "own_notes"))
+    register.add_argument("--language", default="en-US")
+    register.add_argument("--execute", action="store_true")
+    register.add_argument("-o", "--output", type=Path)
+
     query = commands.add_parser(
         "query",
         help="create a bounded learning context",
@@ -396,7 +406,12 @@ def main() -> int:
     )
 
     try:
-        if args.command in {
+        if args.command == "register-source":
+            result = register_source(
+                content_workspace, args.source.expanduser().resolve(), args.source_id,
+                args.title, args.source_type, args.language, args.execute,
+            )
+        elif args.command in {
             "query",
             "chat-task",
         }:
